@@ -15,3 +15,5 @@ export * from "./separator";
 export * from "./skeleton";
 export * from "./table";
 export * from "./textarea";
+export * from "./tabs";
+

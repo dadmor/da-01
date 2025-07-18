@@ -1,3 +1,4 @@
+// src/pages/auth/forgot-password.tsx
 import React from 'react';
 import { useForgotPassword } from '@refinedev/core';
 import { Button } from '@/components/ui/button';

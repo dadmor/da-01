@@ -1,4 +1,4 @@
-// pages/auth/RegisterStep3.tsx - Uproszczona wersja
+// pages/auth/RegisterStep3.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

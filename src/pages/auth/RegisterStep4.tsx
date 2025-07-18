@@ -1,4 +1,4 @@
-// pages/auth/RegisterStep4.tsx - Krok podsumowania
+// pages/auth/RegisterStep4.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

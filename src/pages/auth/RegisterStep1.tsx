@@ -1,4 +1,4 @@
-// pages/auth/RegisterStep1.tsx - POPRAWIONE
+// pages/auth/RegisterStep1.tsx
 import { NarrowCol } from "@/components/layout/NarrowCol";
 import { Lead } from "@/components/reader";
 import { SchemaForm } from "@/components/SchemaForm";

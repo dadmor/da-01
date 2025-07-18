@@ -1,3 +1,4 @@
+// src/pages/auth/register.tsx
 import React from 'react';
 import { useRegister } from '@refinedev/core';
 import { Button } from '@/components/ui/button';

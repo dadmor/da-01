@@ -16,48 +16,50 @@
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
     "Liberation Mono", Menlo, monospace;
 
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
+  /* Ekskluzywna paleta inspirowana luksusowymi kosmetykami */
+  --background: 330 20% 98%; /* Bardzo delikatny pudrowy róż */
+  --foreground: 285 35% 25%; /* Głęboki purpurowy odcień */
+  --card: 330 15% 97%; /* Subtelny pudrowy odcień */
+  --card-foreground: 285 35% 25%;
+  --popover: 330 15% 97%;
+  --popover-foreground: 285 35% 25%;
+  --primary: 285 45% 45%; /* Królewska purpura */
+  --primary-foreground: 330 20% 98%;
+  --secondary: 330 25% 85%; /* Pudrowy róż */
+  --secondary-foreground: 285 35% 25%;
+  --muted: 330 20% 92%; /* Bardzo jasny pudrowy */
+  --muted-foreground: 285 25% 40%;
+  --accent: 300 30% 75%; /* Lawendowy akcent */
+  --accent-foreground: 285 35% 25%;
+  --destructive: 350 65% 55%; /* Malinowy */
+  --destructive-foreground: 330 20% 98%;
+  --border: 330 15% 88%; /* Delikatna pudrowa ramka */
+  --input: 330 15% 88%;
+  --ring: 285 45% 45%;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  /* Wieczorowa elegancja - głębokie purpury i róże */
+  --background: 285 25% 12%; /* Głęboka purpura */
+  --foreground: 330 25% 95%; /* Jasny pudrowy */
+  --card: 285 20% 16%;
+  --card-foreground: 330 25% 95%;
+  --popover: 285 20% 16%;
+  --popover-foreground: 330 25% 95%;
+  --primary: 330 40% 75%; /* Pudrowy róż */
+  --primary-foreground: 285 25% 12%;
+  --secondary: 285 30% 35%; /* Średnia purpura */
+  --secondary-foreground: 330 25% 95%;
+  --muted: 285 20% 25%; /* Przytłumiona purpura */
+  --muted-foreground: 330 20% 75%;
+  --accent: 300 35% 60%; /* Lawendowy akcent */
+  --accent-foreground: 330 25% 95%;
+  --destructive: 350 55% 45%; /* Głęboki malinowy */
+  --destructive-foreground: 330 25% 95%;
+  --border: 285 20% 25%;
+  --input: 285 20% 25%;
+  --ring: 330 40% 75%;
 }
 
 body {
