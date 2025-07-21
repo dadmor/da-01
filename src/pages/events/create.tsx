@@ -1,4 +1,3 @@
-
 // src/pages/events/create.tsx
 import { useState, useEffect } from "react";
 import { useForm } from "@refinedev/react-hook-form";
@@ -185,13 +184,13 @@ export const EventsCreate = () => {
         <Lead title="Utwórz wydarzenie" description="Dodaj nową lekcję, warsztaty lub wydarzenie taneczne" />
       </FlexBox>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informacje o wydarzeniu</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form onSubmit={handleSubmit(handleFormSubmit)}>
-            {/* Podstawowe informacje */}
+      <Form onSubmit={handleSubmit(handleFormSubmit)}>
+        {/* Basic Information Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Informacje podstawowe</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl
               label="Tytuł wydarzenia"
               htmlFor="title"
@@ -298,8 +297,15 @@ export const EventsCreate = () => {
                 })}
               />
             </FormControl>
+          </CardContent>
+        </Card>
 
-            {/* Termin i czas */}
+        {/* Date and Time Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Termin i czas</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl
               label="Data"
               htmlFor="event_date"
@@ -364,8 +370,15 @@ export const EventsCreate = () => {
                 />
               </FormControl>
             )}
+          </CardContent>
+        </Card>
 
-            {/* Lokalizacja */}
+        {/* Location Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Lokalizacja</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl
               label="Typ lokalizacji"
               htmlFor="location_type"
@@ -460,8 +473,15 @@ export const EventsCreate = () => {
                 </FormControl>
               </>
             )}
+          </CardContent>
+        </Card>
 
-            {/* Uczestnicy i poziom */}
+        {/* Participants and Skill Level Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Uczestnicy i poziom</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl label="Min. uczestników" htmlFor="min_participants">
               <Input
                 id="min_participants"
@@ -537,8 +557,15 @@ export const EventsCreate = () => {
               />
               <Label htmlFor="provides_partner">Zapewniam partnera</Label>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Cennik */}
+        {/* Pricing Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Cennik</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl label="Cena" htmlFor="price_amount">
               <Input
                 id="price_amount"
@@ -598,8 +625,15 @@ export const EventsCreate = () => {
                 />
               </FormControl>
             )}
+          </CardContent>
+        </Card>
 
-            {/* Dodatkowe informacje */}
+        {/* Additional Information Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Dodatkowe informacje</CardTitle>
+          </CardHeader>
+          <CardContent>
             <FormControl label="Tagi">
               <div className="flex gap-2">
                 <Input
@@ -675,18 +709,19 @@ export const EventsCreate = () => {
                 </SelectContent>
               </Select>
             </FormControl>
+          </CardContent>
+        </Card>
 
-            <FormActions>
-              <Button type="button" variant="outline" onClick={() => list("events")}>
-                Anuluj
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Tworzenie..." : "Utwórz wydarzenie"}
-              </Button>
-            </FormActions>
-          </Form>
-        </CardContent>
-      </Card>
+        {/* Form Actions */}
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => list("events")}>
+            Anuluj
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Tworzenie..." : "Utwórz wydarzenie"}
+          </Button>
+        </FormActions>
+      </Form>
     </>
   );
 };
