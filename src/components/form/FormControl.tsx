@@ -1,34 +1,31 @@
-// components/FormControl.tsx
-
-import { ReactNode } from "react";
+import { ReactNode, cloneElement, isValidElement } from "react";
 import { Label } from "@/components/ui/label";
 
 interface FormFieldProps {
   children: ReactNode;
   label?: ReactNode;
   htmlFor?: string;
-  error?: string;
+  error?: string | undefined;
   required?: boolean;
   className?: string;
 }
 
-export const FormControl = ({ 
-  children, 
+export const FormControl = ({
+  children,
   label,
   htmlFor,
   error,
   required = false,
-  className = ""
+  className = "",
 }: FormFieldProps) => {
   const baseClasses = "space-y-2";
   const combinedClasses = className ? `${baseClasses} ${className}` : baseClasses;
-  
+
   // Funkcja do dodawania gwiazdki do label
   const renderLabel = () => {
     if (!label) return null;
 
-    // Jeśli label jest stringiem, dodaj gwiazdkę bezpośrednio
-    if (typeof label === 'string') {
+    if (typeof label === "string") {
       return (
         <Label htmlFor={htmlFor}>
           {label}
@@ -37,8 +34,6 @@ export const FormControl = ({
       );
     }
 
-    // Jeśli label jest ReactNode (np. FlexBox z ikoną), 
-    // owijamy w Label i dodajemy gwiazdkę na zewnątrz
     return (
       <Label htmlFor={htmlFor} className="flex items-center">
         {label}
@@ -46,14 +41,21 @@ export const FormControl = ({
       </Label>
     );
   };
-  
+
+  // Sprawdzamy, czy children to pojedynczy element React
+  const enhancedChildren = isValidElement(children)
+    ? cloneElement(children as React.ReactElement, {
+        className: `${(children as React.ReactElement).props.className || ""} ${
+          error ? "border-red-500 ring-1 ring-red-500" : ""
+        }`.trim(),
+      })
+    : children;
+
   return (
     <div className={combinedClasses}>
       {renderLabel()}
-      {children}
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {enhancedChildren}
+      {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   );
 };
