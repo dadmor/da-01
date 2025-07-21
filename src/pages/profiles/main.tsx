@@ -1,4 +1,3 @@
-// src/pages/profiles/main.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,7 +92,7 @@ export const ProfilesMain = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [dancerProfile, setDancerProfile] = useState<DancerProfile | null>(null);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"dancer" | "school">("dancer");
+  const [activeTab, setActiveTab] = useState<"dancer" | "school" | "events">("dancer");
   const [myOrganizedEvents, setMyOrganizedEvents] = useState<Event[]>([]);
   const [myParticipatingEvents, setMyParticipatingEvents] = useState<Event[]>([]);
   
@@ -374,7 +373,7 @@ export const ProfilesMain = () => {
       <FlexBox>
         <Lead
           title="Mój Profil"
-          description="Zarządzaj swoimi profilami tancerza i szkoły tańca"
+          description="Zarządzaj swoimi profilami tancerza, szkoły tańca i wydarzeniami"
         />
       </FlexBox>
 
@@ -512,8 +511,8 @@ export const ProfilesMain = () => {
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dancer" | "school")}>
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dancer" | "school" | "events")}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dancer" disabled={!dancerProfile}>
                 <User className="w-4 h-4 mr-2" />
                 Profil Tancerza
@@ -521,6 +520,10 @@ export const ProfilesMain = () => {
               <TabsTrigger value="school" disabled={!schoolProfile}>
                 <School className="w-4 h-4 mr-2" />
                 Profil Szkoły
+              </TabsTrigger>
+              <TabsTrigger value="events">
+                <Calendar className="w-4 h-4 mr-2" />
+                Wydarzenia
               </TabsTrigger>
             </TabsList>
 
@@ -576,163 +579,6 @@ export const ProfilesMain = () => {
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Moje Wydarzenia - dla wszystkich użytkowników */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5" />
-                        Moje Wydarzenia
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Wydarzenia w których uczestniczę */}
-                      {myParticipatingEvents.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-3 flex items-center gap-2">
-                            <Ticket className="w-4 h-4" />
-                            Wydarzenia, w których uczestniczę
-                          </h4>
-                          <div className="space-y-3">
-                            {myParticipatingEvents.map((event) => (
-                              <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div>
-                                    <h5 className="font-medium">{event.title}</h5>
-                                    <p className="text-sm text-muted-foreground">
-                                      {format(new Date(event.start_datetime), "EEEE, d MMMM", { locale: pl })}
-                                    </p>
-                                    {event.organizer && (
-                                      <p className="text-sm text-muted-foreground">
-                                        Organizator: {event.organizer.name}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <Badge variant="outline">
-                                    {format(new Date(event.start_datetime), "HH:mm")}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <Badge variant="secondary">
-                                    {getEventCategoryLabel(event.event_category)}
-                                  </Badge>
-                                  {event.dance_styles && (
-                                    <div className="flex items-center gap-1">
-                                      <Music className="w-3 h-3" />
-                                      <span>{event.dance_styles.name}</span>
-                                    </div>
-                                  )}
-                                  {event.city && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="w-3 h-3" />
-                                      <span>{event.city}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="mt-2 w-full"
-                                  onClick={() => navigate(`/events/show/${event.id}`)}
-                                >
-                                  Zobacz szczegóły
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                          {myParticipatingEvents.length === 5 && (
-                            <Button 
-                              variant="link" 
-                              className="w-full mt-2"
-                              onClick={() => navigate('/events?participating=true')}
-                            >
-                              Zobacz wszystkie →
-                            </Button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Wydarzenia które organizuję */}
-                      {myOrganizedEvents.length > 0 && (
-                        <div className={myParticipatingEvents.length > 0 ? "pt-4 border-t" : ""}>
-                          <h4 className="font-medium mb-3 flex items-center gap-2">
-                            <Trophy className="w-4 h-4" />
-                            Wydarzenia, które organizuję
-                          </h4>
-                          <div className="space-y-3">
-                            {myOrganizedEvents.map((event) => (
-                              <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div>
-                                    <h5 className="font-medium">{event.title}</h5>
-                                    <p className="text-sm text-muted-foreground">
-                                      {format(new Date(event.start_datetime), "EEEE, d MMMM", { locale: pl })}
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline">
-                                    {format(new Date(event.start_datetime), "HH:mm")}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <Badge variant="secondary">
-                                    {getEventCategoryLabel(event.event_category)}
-                                  </Badge>
-                                  <div className="flex items-center gap-1">
-                                    <Users className="w-3 h-3" />
-                                    <span>
-                                      {event.current_participants}
-                                      {event.max_participants && `/${event.max_participants}`}
-                                    </span>
-                                  </div>
-                                  {event.price_amount !== null && event.price_amount !== undefined && (
-                                    <div className="flex items-center gap-1">
-                                      <DollarSign className="w-3 h-3" />
-                                      <span>
-                                        {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="default" 
-                                  className="mt-2 w-full"
-                                  onClick={() => navigate(`/events/show/${event.id}`)}
-                                >
-                                  Zarządzaj
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                          {myOrganizedEvents.length === 5 && (
-                            <Button 
-                              variant="link" 
-                              className="w-full mt-2"
-                              onClick={() => navigate(`/events?organizer=${identity?.id}`)}
-                            >
-                              Zobacz wszystkie →
-                            </Button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Gdy nie ma żadnych wydarzeń */}
-                      {myParticipatingEvents.length === 0 && myOrganizedEvents.length === 0 && (
-                        <div className="text-center py-8">
-                          <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                          <p className="text-muted-foreground mb-4">
-                            Nie masz jeszcze żadnych nadchodzących wydarzeń
-                          </p>
-                          <Button 
-                            variant="outline"
-                            onClick={() => navigate('/events')}
-                          >
-                            Przeglądaj wydarzenia
-                          </Button>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
 
@@ -878,6 +724,176 @@ export const ProfilesMain = () => {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            <TabsContent value="events" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Moje Wydarzenia
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Wydarzenia w których uczestniczę */}
+                  {myParticipatingEvents.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-4 flex items-center gap-2 text-lg">
+                        <Ticket className="w-5 h-5 text-primary" />
+                        Wydarzenia, w których uczestniczę
+                      </h4>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {myParticipatingEvents.map((event) => (
+                          <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                            <CardContent className="p-5">
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="space-y-1">
+                                    <h5 className="font-semibold text-lg">{event.title}</h5>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(new Date(event.start_datetime), "EEEE, d MMMM yyyy", { locale: pl })}
+                                    </p>
+                                    {event.organizer && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Organizator: {event.organizer.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className="text-sm">
+                                    {format(new Date(event.start_datetime), "HH:mm")}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge variant="secondary" className="flex items-center gap-1">
+                                    <Music className="w-3 h-3" />
+                                    {event.dance_styles?.name}
+                                  </Badge>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    {getEventCategoryLabel(event.event_category)}
+                                  </Badge>
+                                  {event.city && (
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      {event.city}
+                                    </Badge>
+                                  )}
+                                  {event.price_amount !== null && event.price_amount !== undefined && (
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <DollarSign className="w-3 h-3" />
+                                      {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="w-full mt-3 hover:bg-primary hover:text-primary-foreground transition-colors"
+                                  onClick={() => navigate(`/events/show/${event.id}`)}
+                                >
+                                  Zobacz szczegóły
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      {myParticipatingEvents.length === 5 && (
+                        <Button 
+                          variant="link" 
+                          className="w-full mt-4 text-primary"
+                          onClick={() => navigate('/events?participating=true')}
+                        >
+                          Zobacz wszystkie →
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Wydarzenia które organizuję */}
+                  {myOrganizedEvents.length > 0 && (
+                    <div className={myParticipatingEvents.length > 0 ? "pt-6 border-t" : ""}>
+                      <h4 className="font-medium mb-4 flex items-center gap-2 text-lg">
+                        <Trophy className="w-5 h-5 text-primary" />
+                        Wydarzenia, które organizuję
+                      </h4>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {myOrganizedEvents.map((event) => (
+                          <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                            <CardContent className="p-5">
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="space-y-1">
+                                    <h5 className="font-semibold text-lg">{event.title}</h5>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(new Date(event.start_datetime), "EEEE, d MMMM yyyy", { locale: pl })}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" className="text-sm">
+                                    {format(new Date(event.start_datetime), "HH:mm")}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge variant="secondary" className="flex items-center gap-1">
+                                    <Music className="w-3 h-3" />
+                                    {event.dance_styles?.name}
+                                  </Badge>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    {getEventCategoryLabel(event.event_category)}
+                                  </Badge>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    {event.current_participants}
+                                    {event.max_participants && `/${event.max_participants}`}
+                                  </Badge>
+                                  {event.price_amount !== null && event.price_amount !== undefined && (
+                                    <Badge variant="outline" className="flex items-center gap-1">
+                                      <DollarSign className="w-3 h-3" />
+                                      {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="default" 
+                                  className="w-full mt-3"
+                                  onClick={() => navigate(`/events/show/${event.id}`)}
+                                >
+                                  Zarządzaj
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      {myOrganizedEvents.length === 5 && (
+                        <Button 
+                          variant="link" 
+                          className="w-full mt-4 text-primary"
+                          onClick={() => navigate(`/events?organizer=${identity?.id}`)}
+                        >
+                          Zobacz wszystkie →
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Gdy nie ma żadnych wydarzeń */}
+                  {myParticipatingEvents.length === 0 && myOrganizedEvents.length === 0 && (
+                    <div className="text-center py-8">
+                      <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground mb-4">
+                        Nie masz jeszcze żadnych nadchodzących wydarzeń
+                      </p>
+                      <Button 
+                        variant="outline"
+                        onClick={() => navigate('/events')}
+                      >
+                        Przeglądaj wydarzenia
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
