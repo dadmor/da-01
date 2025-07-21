@@ -17,132 +17,172 @@ import { useState } from "react";
 export const MatchesList = () => {
   const [activeTab, setActiveTab] = useState("pending");
   
+  // Pobieramy wszystkie dopasowania i filtrujemy po stronie klienta
   const {
-    tableQuery: { data: pendingData, isLoading: pendingLoading, isError: pendingError, refetch: refetchPending },
+    tableQuery: { data: matchesData, isLoading, isError, refetch },
   } = useTable({
     resource: "matches",
-    filters: {
-      permanent: [
-        {
-          field: "status",
-          operator: "eq",
-          value: "pending",
-        },
-      ],
-    },
-    queryOptions: {
-      enabled: activeTab === "pending",
+    pagination: {
+      mode: "off", // Wyłączamy paginację aby pobrać wszystkie
     },
   });
 
-  const {
-    tableQuery: { data: mutualData, isLoading: mutualLoading, isError: mutualError },
-  } = useTable({
-    resource: "matches",
-    filters: {
-      permanent: [
-        {
-          field: "status",
-          operator: "eq",
-          value: "mutual",
-        },
-      ],
-    },
-    queryOptions: {
-      enabled: activeTab === "mutual",
-    },
-  });
-
-  const {
-    tableQuery: { data: rejectedData, isLoading: rejectedLoading, isError: rejectedError },
-  } = useTable({
-    resource: "matches",
-    filters: {
-      permanent: [
-        {
-          field: "status",
-          operator: "eq",
-          value: "rejected",
-        },
-      ],
-    },
-    queryOptions: {
-      enabled: activeTab === "rejected",
-    },
-  });
-  
   const { mutate: createMatch } = useCreate();
   const { mutate: updateMatch } = useUpdate();
-  
-  const isLoading = pendingLoading || mutualLoading || rejectedLoading;
-  const isError = pendingError || mutualError || rejectedError;
   
   const init = useLoading({ isLoading, isError });
   if (init) return init;
 
-  const handleLike = (dancerId: string) => {
-    createMatch(
-      {
-        resource: "matches",
-        values: {
-          matched_dancer_id: dancerId,
-          status: "pending",
-          action: "like",
-        },
-      },
-      {
-        onSuccess: () => {
-          refetchPending();
-        },
+  const matches = matchesData?.data || [];
+  
+  // Zakładamy, że mamy current_user_id dostępny z kontekstu lub props
+  // Jeśli nie, musisz go dostarczyć z Twojego systemu autentykacji
+  const currentUserId = "CURRENT_USER_ID"; // TODO: Pobierz rzeczywiste ID zalogowanego użytkownika
+
+  // Filtrujemy dopasowania po stronie klienta
+  const categorizeMatches = () => {
+    const pending: any[] = [];
+    const mutual: any[] = [];
+    const rejected: any[] = [];
+
+    matches.forEach((match: any) => {
+      const isUser1 = match.dancer1_id === currentUserId;
+      const isUser2 = match.dancer2_id === currentUserId;
+      
+      if (!isUser1 && !isUser2) return; // Nie dotyczy tego użytkownika
+
+      // Sprawdzamy status dla tego użytkownika
+      if (match.is_match) {
+        mutual.push({
+          ...match,
+          matched_dancer: isUser1 ? match.dancer2 : match.dancer1,
+          current_user_id: currentUserId,
+        });
+      } else {
+        const userStatus = isUser1 ? match.dancer1_status : match.dancer2_status;
+        const otherStatus = isUser1 ? match.dancer2_status : match.dancer1_status;
+        
+        if (userStatus === 'rejected') {
+          rejected.push({
+            ...match,
+            matched_dancer: isUser1 ? match.dancer2 : match.dancer1,
+            current_user_id: currentUserId,
+          });
+        } else if (userStatus === 'pending' || otherStatus === 'pending') {
+          pending.push({
+            ...match,
+            matched_dancer: isUser1 ? match.dancer2 : match.dancer1,
+            current_user_id: currentUserId,
+            initiator_id: otherStatus === 'liked' ? (isUser1 ? match.dancer2_id : match.dancer1_id) : currentUserId,
+          });
+        }
       }
+    });
+
+    return { pending, mutual, rejected };
+  };
+
+  const { pending: pendingMatches, mutual: mutualMatches, rejected: rejectedMatches } = categorizeMatches();
+
+  const handleLike = (dancerId: string) => {
+    // Najpierw sprawdzamy czy już istnieje dopasowanie
+    const existingMatch = matches.find((m: any) => 
+      (m.dancer1_id === currentUserId && m.dancer2_id === dancerId) ||
+      (m.dancer2_id === currentUserId && m.dancer1_id === dancerId)
     );
+
+    if (existingMatch) {
+      // Aktualizujemy istniejące dopasowanie
+      const isUser1 = existingMatch.dancer1_id === currentUserId;
+      updateMatch(
+        {
+          resource: "matches",
+          id: existingMatch.id,
+          values: isUser1 
+            ? { dancer1_status: 'liked' }
+            : { dancer2_status: 'liked' },
+        },
+        {
+          onSuccess: () => {
+            refetch();
+          },
+        }
+      );
+    } else {
+      // Tworzymy nowe dopasowanie
+      createMatch(
+        {
+          resource: "matches",
+          values: {
+            dancer1_id: currentUserId,
+            dancer2_id: dancerId,
+            dancer1_status: 'liked',
+            dancer2_status: 'pending',
+          },
+        },
+        {
+          onSuccess: () => {
+            refetch();
+          },
+        }
+      );
+    }
   };
 
   const handleDislike = (matchId: string) => {
+    const match = matches.find((m: any) => m.id === matchId);
+    if (!match) return;
+
+    const isUser1 = match.dancer1_id === currentUserId;
     updateMatch(
       {
         resource: "matches",
         id: matchId,
-        values: {
-          status: "rejected",
-          action: "dislike",
-        },
+        values: isUser1 
+          ? { dancer1_status: 'rejected' }
+          : { dancer2_status: 'rejected' },
       },
       {
         onSuccess: () => {
-          refetchPending();
+          refetch();
         },
       }
     );
   };
 
   const handleAcceptMatch = (matchId: string) => {
+    const match = matches.find((m: any) => m.id === matchId);
+    if (!match) return;
+
+    const isUser1 = match.dancer1_id === currentUserId;
     updateMatch(
       {
         resource: "matches",
         id: matchId,
         values: {
-          status: "mutual",
+          [isUser1 ? 'dancer1_status' : 'dancer2_status']: 'liked',
+          is_match: true,
+          matched_at: new Date().toISOString(),
         },
       },
       {
         onSuccess: () => {
-          refetchPending();
+          refetch();
         },
       }
     );
   };
 
-  const renderMatchCard = (match: any, showActions: boolean = true) => (
+  const renderMatchCard = (match: any, showActions = true) => (
     <Card key={match.id}>
       <CardHeader>
         <div className="relative">
           <img
-            src={match.matched_dancer?.photo_url || "/placeholder-dancer.jpg"}
+            src={match.matched_dancer?.profile_photo_url || "/placeholder-dancer.jpg"}
             alt={match.matched_dancer?.name}
             className="w-full h-80 object-cover rounded-lg"
           />
-          {match.status === "mutual" && (
+          {match.is_match && (
             <Badge className="absolute top-2 right-2 bg-green-500">
               <Check className="w-3 h-3 mr-1" />
               Dopasowanie!
@@ -150,26 +190,29 @@ export const MatchesList = () => {
           )}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
             <h3 className="text-xl font-bold text-white">
-              {match.matched_dancer?.name}, {match.matched_dancer?.age}
+              {match.matched_dancer?.name}
+              {match.matched_dancer?.birth_date && (
+                <>, {new Date().getFullYear() - new Date(match.matched_dancer.birth_date).getFullYear()}</>
+              )}
             </h3>
             <p className="text-white/90 flex items-center gap-2 text-sm">
               <MapPin className="w-3 h-3" />
-              {match.matched_dancer?.city}
+              {match.matched_dancer?.location_address || "Lokalizacja nieznana"}
             </p>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <FlexBox variant="start" className="flex-wrap gap-2 mb-3">
-          {match.matched_dancer?.dance_styles?.slice(0, 3).map((style: string) => (
-            <Badge key={style} variant="secondary" className="text-xs">
+          {match.matched_dancer?.dance_styles?.slice(0, 3).map((style: any) => (
+            <Badge key={style.id || style} variant="secondary" className="text-xs">
               <Music className="w-3 h-3 mr-1" />
-              {style}
+              {style.name || style}
             </Badge>
           ))}
         </FlexBox>
         <p className="text-sm text-muted-foreground line-clamp-2">
-          {match.matched_dancer?.bio}
+          {match.matched_dancer?.bio || "Brak opisu"}
         </p>
         <div className="mt-3 text-xs text-muted-foreground">
           Dopasowano: {new Date(match.created_at).toLocaleDateString("pl-PL")}
@@ -177,7 +220,7 @@ export const MatchesList = () => {
       </CardContent>
       {showActions && (
         <CardFooter>
-          {match.status === "pending" && match.initiator_id !== match.current_user_id ? (
+          {!match.is_match && match.initiator_id !== match.current_user_id ? (
             <FlexBox className="w-full gap-2">
               <Button
                 variant="outline"
@@ -195,12 +238,12 @@ export const MatchesList = () => {
                 Akceptuj
               </Button>
             </FlexBox>
-          ) : match.status === "mutual" ? (
+          ) : match.is_match ? (
             <Button className="w-full">
               <MessageCircle className="w-4 h-4 mr-2" />
               Napisz wiadomość
             </Button>
-          ) : match.status === "pending" ? (
+          ) : !match.is_match ? (
             <Badge variant="outline" className="w-full justify-center py-2">
               Oczekuje na odpowiedź
             </Badge>
@@ -209,10 +252,6 @@ export const MatchesList = () => {
       )}
     </Card>
   );
-
-  const pendingMatches = pendingData?.data || [];
-  const mutualMatches = mutualData?.data || [];
-  const rejectedMatches = rejectedData?.data || [];
 
   return (
     <>

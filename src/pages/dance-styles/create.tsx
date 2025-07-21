@@ -62,6 +62,18 @@ export const DanceStylesCreate = () => {
             </FormControl>
 
             <FormControl
+              label="Kategoria"
+              htmlFor="category"
+              error={errors.category?.message as string}
+            >
+              <Input
+                id="category"
+                placeholder="np. Latynoamerykańskie, Standardowe, Uliczne"
+                {...register("category")}
+              />
+            </FormControl>
+
+            <FormControl
               label="Opis"
               htmlFor="description"
               error={errors.description?.message as string}
@@ -71,30 +83,6 @@ export const DanceStylesCreate = () => {
                 placeholder="Opisz charakterystykę stylu, pochodzenie, podstawowe kroki..."
                 rows={4}
                 {...register("description")}
-              />
-            </FormControl>
-
-            <FormControl
-              label="Pochodzenie"
-              htmlFor="origin"
-              error={errors.origin?.message as string}
-            >
-              <Input
-                id="origin"
-                placeholder="np. Kuba"
-                {...register("origin")}
-              />
-            </FormControl>
-
-            <FormControl
-              label="Poziom trudności"
-              htmlFor="difficulty"
-              error={errors.difficulty?.message as string}
-            >
-              <Input
-                id="difficulty"
-                placeholder="np. Średni"
-                {...register("difficulty")}
               />
             </FormControl>
 
@@ -118,4 +106,4 @@ export const DanceStylesCreate = () => {
       </Card>
     </>
   );
-};
+};  

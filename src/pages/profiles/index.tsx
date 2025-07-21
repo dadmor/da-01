@@ -9,19 +9,19 @@ export { ProfilesMain } from "./main";
 export { ProfilesCreate } from "./create";
 export { ProfilesEdit } from "./edit";
 
-// Resource definition
+// Resource definition - BEZ ID, bo to profil zalogowanego użytkownika
 export const profilesResource = {
   name: "profiles",
   list: "/profiles",
   create: "/profiles/create",
-  edit: "/profiles/edit/:id",
+  edit: "/profiles/edit", // Bez :id
   meta: {
     label: "Mój Profil",
     icon: "User",
   },
 };
 
-// Routes
+// Routes - BEZ ID
 export const profilesRoutes = [
   <Route
     key="profiles-main"
@@ -35,7 +35,7 @@ export const profilesRoutes = [
   />,
   <Route
     key="profiles-edit"
-    path="/profiles/edit/:id"
+    path="/profiles/edit"
     element={<ProfilesEdit />}
   />,
 ];

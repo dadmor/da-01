@@ -1,6 +1,6 @@
 // src/pages/profiles/main.tsx
 import { useState, useEffect } from "react";
-import { useNavigation } from "@refinedev/core";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,7 +56,7 @@ interface SchoolProfile {
 }
 
 export const ProfilesMain = () => {
-  const { create, edit } = useNavigation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [dancerProfile, setDancerProfile] = useState<DancerProfile | null>(null);
@@ -101,12 +101,12 @@ export const ProfilesMain = () => {
           )
         `)
         .eq('user_id', authUser.id)
-        .maybeSingle(); // Używamy maybeSingle() zamiast single()
+        .maybeSingle();
 
       if (dancerData) {
         setDancerProfile({
           ...dancerData,
-          dance_styles: dancerData.dancer_dance_styles?.map((ds: any) => ds.dance_styles?.name) || []
+          dance_styles: dancerData.dancer_dance_styles?.map((ds: any) => ds.dance_styles?.name).filter(Boolean) || []
         });
       }
 
@@ -115,7 +115,7 @@ export const ProfilesMain = () => {
         .from('dance_schools')
         .select('*')
         .eq('user_id', authUser.id)
-        .maybeSingle(); // Używamy maybeSingle() zamiast single()
+        .maybeSingle();
 
       if (schoolData) {
         setSchoolProfile(schoolData);
@@ -126,6 +126,14 @@ export const ProfilesMain = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateProfile = () => {
+    navigate("/profiles/create");
+  };
+
+  const handleEditProfile = () => {
+    navigate("/profiles/edit");
   };
 
   if (loading) {
@@ -158,7 +166,7 @@ export const ProfilesMain = () => {
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow" 
-                    onClick={() => create("profiles")}>
+                    onClick={handleCreateProfile}>
                 <CardContent className="pt-6">
                   <div className="text-center space-y-4">
                     <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
@@ -220,7 +228,7 @@ export const ProfilesMain = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => edit("dancers", dancerProfile.id)}
+                          onClick={handleEditProfile}
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Edytuj
@@ -327,7 +335,7 @@ export const ProfilesMain = () => {
                 <Card>
                   <CardContent className="pt-6 text-center">
                     <p className="text-muted-foreground mb-4">Nie masz jeszcze profilu tancerza</p>
-                    <Button onClick={() => create("profiles")}>
+                    <Button onClick={handleCreateProfile}>
                       <Plus className="w-4 h-4 mr-2" />
                       Utwórz profil tancerza
                     </Button>
@@ -345,7 +353,7 @@ export const ProfilesMain = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => edit("dance-schools", schoolProfile.id)}
+                        disabled
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Edytuj

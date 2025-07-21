@@ -1,7 +1,6 @@
 // src/pages/profiles/edit.tsx
 import { useState, useEffect } from "react";
-import { useForm } from "@refinedev/react-hook-form";
-import { useNavigation, useUpdate } from "@refinedev/core";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -10,27 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
 import { supabaseClient } from "@/utility";
-
 import { Badge } from "@/components/ui/badge";
-
-const danceStyles = [
-  { id: "salsa", name: "Salsa", category: "Latin" },
-  { id: "bachata", name: "Bachata", category: "Latin" },
-  { id: "tango", name: "Tango", category: "Latin" },
-  { id: "walc", name: "Walc", category: "Standard" },
-  { id: "cha-cha", name: "Cha-cha", category: "Latin" },
-  { id: "rumba", name: "Rumba", category: "Latin" },
-  { id: "samba", name: "Samba", category: "Latin" },
-  { id: "jazz", name: "Jazz", category: "Modern" },
-  { id: "hip-hop", name: "Hip-hop", category: "Modern" },
-  { id: "balet", name: "Balet", category: "Classical" },
-];
+import { useForm } from "react-hook-form";
 
 const skillLevels = [
   { value: "beginner", label: "Początkujący" },
@@ -45,14 +31,20 @@ interface DanceStyleWithLevel {
   yearsExperience?: number;
 }
 
+interface DanceStyle {
+  id: string;
+  name: string;
+  category?: string;
+}
+
 export const ProfilesEdit = () => {
-  const { list } = useNavigation();
-  const { mutate: updateDancer } = useUpdate();
+  const navigate = useNavigate();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [selectedStyles, setSelectedStyles] = useState<DanceStyleWithLevel[]>([]);
   const [dancerProfile, setDancerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [danceStylesFromDB, setDanceStylesFromDB] = useState<DanceStyle[]>([]);
 
   const {
     register,
@@ -64,15 +56,32 @@ export const ProfilesEdit = () => {
 
   useEffect(() => {
     fetchDancerProfile();
+    fetchDanceStyles();
   }, []);
+
+  const fetchDanceStyles = async () => {
+    const { data, error } = await supabaseClient
+      .from("dance_styles")
+      .select("id, name, category")
+      .order("name");
+
+    if (data) {
+      setDanceStylesFromDB(data);
+    } else if (error) {
+      console.error("Error fetching dance styles:", error);
+    }
+  };
 
   const fetchDancerProfile = async () => {
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        navigate("/profiles");
+        return;
+      }
 
       // Get dancer profile with dance styles
-      const { data: dancerData } = await supabaseClient
+      const { data: dancerData, error } = await supabaseClient
         .from('dancers')
         .select(`
           *,
@@ -83,11 +92,17 @@ export const ProfilesEdit = () => {
           )
         `)
         .eq('user_id', user.id)
-        .maybeSingle(); // Używamy maybeSingle() zamiast single()
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching profile:", error);
+        navigate("/profiles");
+        return;
+      }
 
       if (!dancerData) {
         console.error("No dancer profile found");
-        list("profiles");
+        navigate("/profiles");
         return;
       }
 
@@ -118,6 +133,7 @@ export const ProfilesEdit = () => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
+      navigate("/profiles");
     } finally {
       setLoading(false);
     }
@@ -140,10 +156,14 @@ export const ProfilesEdit = () => {
     if (!user) throw new Error("No user");
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
     const { data, error } = await supabaseClient.storage
       .from('dancer-photos')
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (error) throw error;
     
@@ -176,60 +196,68 @@ export const ProfilesEdit = () => {
       if (!dancerProfile) return;
 
       let profilePhotoUrl = dancerProfile.profile_photo_url;
+      
+      // Upload new photo if selected
       if (photoFile) {
-        profilePhotoUrl = await uploadPhoto(photoFile);
+        try {
+          profilePhotoUrl = await uploadPhoto(photoFile);
+        } catch (error) {
+          console.error("Photo upload error:", error);
+          alert("Nie udało się przesłać zdjęcia, ale profil zostanie zaktualizowany");
+        }
       }
 
       // Update dancer profile
-      updateDancer(
-        {
-          resource: "dancers",
-          id: dancerProfile.id,
-          values: {
-            name: data.name,
-            bio: data.bio,
-            birth_date: data.birth_date,
-            profile_photo_url: profilePhotoUrl,
-            location_address: data.city,
-          },
-        },
-        {
-          onSuccess: async () => {
-            // Update dance style associations
-            // First, delete existing associations
-            await supabaseClient
-              .from('dancer_dance_styles')
-              .delete()
-              .eq('dancer_id', dancerProfile.id);
+      const { error: updateError } = await supabaseClient
+        .from('dancers')
+        .update({
+          name: data.name,
+          bio: data.bio,
+          birth_date: data.birth_date,
+          profile_photo_url: profilePhotoUrl,
+          location_address: data.city,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', dancerProfile.id);
 
-            // Then, insert new associations
-            if (selectedStyles.length > 0) {
-              const styleAssociations = selectedStyles.map(style => ({
-                dancer_id: dancerProfile.id,
-                dance_style_id: style.styleId,
-                skill_level: style.level,
-                years_experience: style.yearsExperience || 0,
-              }));
+      if (updateError) {
+        console.error("Update error:", updateError);
+        alert("Błąd podczas aktualizacji profilu");
+        return;
+      }
 
-              const { error } = await supabaseClient
-                .from('dancer_dance_styles')
-                .insert(styleAssociations);
+      // Update dance style associations
+      // First, delete existing associations
+      await supabaseClient
+        .from('dancer_dance_styles')
+        .delete()
+        .eq('dancer_id', dancerProfile.id);
 
-              if (error) {
-                console.error("Error updating dance styles:", error);
-              }
-            }
+      // Then, insert new associations
+      if (selectedStyles.length > 0) {
+        const styleAssociations = selectedStyles.map(style => ({
+          dancer_id: dancerProfile.id,
+          dance_style_id: style.styleId,
+          skill_level: style.level,
+          years_experience: style.yearsExperience || 0,
+        }));
 
-            // Redirect to profiles page
-            list("profiles");
-          },
-          onError: (error) => {
-            console.error("Error updating dancer profile:", error);
-          },
+        const { error } = await supabaseClient
+          .from('dancer_dance_styles')
+          .insert(styleAssociations);
+
+        if (error) {
+          console.error("Error updating dance styles:", error);
+          alert("Nie udało się zaktualizować stylów tańca");
         }
-      );
+      }
+
+      alert("Profil został zaktualizowany!");
+      navigate("/profiles");
+
     } catch (error) {
       console.error("Error in form submission:", error);
+      alert("Wystąpił błąd podczas aktualizacji profilu");
     }
   };
 
@@ -250,7 +278,7 @@ export const ProfilesEdit = () => {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => list("profiles")}
+        onClick={() => navigate("/profiles")}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Powrót do profilu
@@ -373,49 +401,55 @@ export const ProfilesEdit = () => {
               required
             >
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {danceStyles.map((style) => (
-                    <Button
-                      key={style.id}
-                      type="button"
-                      variant={selectedStyles.find(s => s.styleId === style.id) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleStyleToggle(style.id)}
-                    >
-                      {style.name}
-                    </Button>
-                  ))}
-                </div>
+                {danceStylesFromDB.length === 0 ? (
+                  <p className="text-muted-foreground">Ładowanie stylów tańca...</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {danceStylesFromDB.map((style) => (
+                        <Button
+                          key={style.id}
+                          type="button"
+                          variant={selectedStyles.find(s => s.styleId === style.id) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleStyleToggle(style.id)}
+                        >
+                          {style.name}
+                        </Button>
+                      ))}
+                    </div>
 
-                {selectedStyles.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Określ swój poziom dla każdego wybranego stylu:
-                    </p>
-                    {selectedStyles.map((selectedStyle) => {
-                      const style = danceStyles.find(s => s.id === selectedStyle.styleId);
-                      return (
-                        <div key={selectedStyle.styleId} className="flex items-center gap-4 p-3 border rounded-lg">
-                          <Badge variant="secondary">{style?.name}</Badge>
-                          <Select
-                            value={selectedStyle.level}
-                            onValueChange={(value) => updateStyleLevel(selectedStyle.styleId, value)}
-                          >
-                            <SelectTrigger className="w-48">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {skillLevels.map((level) => (
-                                <SelectItem key={level.value} value={level.value}>
-                                  {level.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })}
-                  </div>
+                    {selectedStyles.length > 0 && (
+                      <div className="mt-6 space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Określ swój poziom dla każdego wybranego stylu:
+                        </p>
+                        {selectedStyles.map((selectedStyle) => {
+                          const style = danceStylesFromDB.find(s => s.id === selectedStyle.styleId);
+                          return (
+                            <div key={selectedStyle.styleId} className="flex items-center gap-4 p-3 border rounded-lg">
+                              <Badge variant="secondary">{style?.name}</Badge>
+                              <Select
+                                value={selectedStyle.level}
+                                onValueChange={(value) => updateStyleLevel(selectedStyle.styleId, value)}
+                              >
+                                <SelectTrigger className="w-48">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {skillLevels.map((level) => (
+                                    <SelectItem key={level.value} value={level.value}>
+                                      {level.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </FormControl>
@@ -426,7 +460,7 @@ export const ProfilesEdit = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => list("profiles")}
+            onClick={() => navigate("/profiles")}
           >
             Anuluj
           </Button>
