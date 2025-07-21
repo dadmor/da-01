@@ -5,6 +5,8 @@ import { useGetIdentity, useList } from "@refinedev/core";
 import { useEffect, useState } from "react";
 import { useDancerLikes } from "./useDancerLikes";
 import { cn } from "@/utility";
+import { Dancer, UserIdentity } from "./dancers";
+
 
 interface DancerLikeButtonProps {
   targetDancerId: string;
@@ -21,12 +23,12 @@ export const DancerLikeButton = ({
   showText = true,
   className,
 }: DancerLikeButtonProps) => {
-  const { data: identity } = useGetIdentity();
-  const { likeDancer, checkIfLiked, isLiking, useDancerLikesData } = useDancerLikes();
+  const { data: identity } = useGetIdentity<UserIdentity>();
+  const { likeDancer, isLiking, useDancerLikesData } = useDancerLikes();
   const [currentDancerId, setCurrentDancerId] = useState<string | null>(null);
 
   // Pobierz dancer_id na podstawie user_id
-  const { data: dancerData } = useList({
+  const { data: dancerData } = useList<Dancer>({
     resource: "dancers",
     filters: [
       {

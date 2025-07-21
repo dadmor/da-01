@@ -13,7 +13,6 @@ import {
   Eye,
   EyeOff,
   Star,
-  Clock,
   Users,
   DollarSign
 } from "lucide-react";
@@ -25,18 +24,27 @@ import { DancerLikeButton } from "./DancerLikeButton";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { Dancer, UserIdentity } from "./dancers";
+import { Event } from "../events/events";
+
+interface InstructorStats {
+  totalEvents: number;
+  upcomingEvents: number;
+  totalStudents: number;
+  averagePrice: number;
+}
 
 export const DancersShow = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity } = useGetIdentity<UserIdentity>();
   const [showContactOptions, setShowContactOptions] = useState(false);
-  const [instructorStats, setInstructorStats] = useState({
+  const [instructorStats, setInstructorStats] = useState<InstructorStats>({
     totalEvents: 0,
     upcomingEvents: 0,
     totalStudents: 0,
     averagePrice: 0
   });
   
-  const { queryResult } = useShow({
+  const { queryResult } = useShow<Dancer>({
     meta: {
       select: `*, 
         dancer_dance_styles(
@@ -55,7 +63,7 @@ export const DancersShow = () => {
   const record = data?.data;
 
   // Pobierz nadchodzące wydarzenia trenera
-  const { data: trainerEvents } = useList({
+  const { data: trainerEvents } = useList<Event>({
     resource: "events",
     filters: [
       {
@@ -87,14 +95,14 @@ export const DancersShow = () => {
       },
     ],
     queryOptions: {
-      enabled: !!record?.users?.id && record?.dancer_dance_styles?.some((ds: any) => ds.is_teaching),
+      enabled: !!record?.users?.id && !!record?.dancer_dance_styles?.some((ds) => ds.is_teaching),
     },
   });
 
   // Oblicz statystyki instruktora
   useEffect(() => {
     const calculateInstructorStats = async () => {
-      if (!record?.users?.id || !record?.dancer_dance_styles?.some((ds: any) => ds.is_teaching)) return;
+      if (!record?.users?.id || !record?.dancer_dance_styles?.some((ds) => ds.is_teaching)) return;
 
       try {
         const { supabaseClient } = await import("@/utility");
@@ -169,19 +177,19 @@ export const DancersShow = () => {
     null;
 
   // Wyciągnij style tańca
-  const danceStyles = record.dancer_dance_styles?.map((ds: any) => ({
+  const danceStyles = record.dancer_dance_styles?.map((ds) => ({
     name: ds.dance_styles?.name,
     category: ds.dance_styles?.category,
     level: ds.skill_level,
     yearsExperience: ds.years_experience,
     isTeaching: ds.is_teaching
-  })).filter((ds: any) => ds.name) || [];
+  })).filter((ds) => ds.name) || [];
 
   // Sprawdź czy to własny profil
   const isOwnProfile = identity?.id === record.user_id;
   
   // Sprawdź czy to instruktor
-  const isInstructor = danceStyles.some((s: any) => s.isTeaching);
+  const isInstructor = danceStyles.some((s) => s.isTeaching);
 
   // Mapowanie poziomów
   const getSkillLevelLabel = (level: string) => {
@@ -320,7 +328,7 @@ export const DancersShow = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {danceStyles.map((style: any, index: number) => (
+                  {danceStyles.map((style, index) => (
                     <div key={index} className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <Badge>{style.name}</Badge>
@@ -342,7 +350,7 @@ export const DancersShow = () => {
                             {getSkillLevelLabel(style.level)}
                           </span>
                         </span>
-                        {style.yearsExperience > 0 && (
+                        {style.yearsExperience && style.yearsExperience > 0 && (
                           <span className="text-muted-foreground">
                             Doświadczenie: <span className="font-medium text-foreground">
                               {style.yearsExperience} {style.yearsExperience === 1 ? 'rok' : style.yearsExperience < 5 ? 'lata' : 'lat'}
@@ -368,7 +376,7 @@ export const DancersShow = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {trainerEvents.data.map((event: any) => (
+                  {trainerEvents.data.map((event) => (
                     <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex justify-between items-start mb-2">
                         <div>
@@ -395,7 +403,7 @@ export const DancersShow = () => {
                             {event.max_participants && `/${event.max_participants}`}
                           </span>
                         </div>
-                        {event.price_amount !== null && (
+                        {event.price_amount !== null && event.price_amount !== undefined && (
                           <div className="flex items-center gap-1">
                             <DollarSign className="w-3 h-3" />
                             <span>
@@ -418,7 +426,7 @@ export const DancersShow = () => {
                 <Button 
                   className="w-full mt-4" 
                   variant="default"
-                  onClick={() => window.location.href = `/events?organizer=${record.users.id}`}
+                  onClick={() => window.location.href = `/events?organizer=${record.users?.id}`}
                 >
                   Zobacz wszystkie zajęcia
                 </Button>
@@ -452,7 +460,7 @@ export const DancersShow = () => {
                   <Button 
                     className="w-full" 
                     variant="default"
-                    onClick={() => window.location.href = `/events?organizer=${record.users.id}`}
+                    onClick={() => window.location.href = `/events?organizer=${record.users?.id}`}
                   >
                     <Calendar className="w-4 h-4 mr-2" />
                     Zobacz zajęcia
@@ -554,8 +562,8 @@ export const DancersShow = () => {
               <CardContent>
                 <div className="space-y-2 mb-4">
                   {danceStyles
-                    .filter((s: any) => s.isTeaching)
-                    .map((style: any, idx: number) => (
+                    .filter((s) => s.isTeaching)
+                    .map((style, idx) => (
                       <Badge key={idx} variant="secondary">
                         {style.name}
                       </Badge>

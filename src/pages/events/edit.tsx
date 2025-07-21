@@ -22,6 +22,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useLoading } from "@/utility";
 import { format } from "date-fns";
+import { Event } from "./events";
+import { DanceStyle } from "../dancers/dancers";
 
 const eventCategories = [
   { value: "lesson", label: "Lekcja indywidualna" },
@@ -55,13 +57,13 @@ export const EventsEdit = () => {
   const { list, show } = useNavigation();
   const navigate = useNavigate();
   const { mutate: updateEvent } = useUpdate();
-  const [danceStyles, setDanceStyles] = useState<any[]>([]);
+  const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [requirements, setRequirements] = useState<string[]>([]);
   const [currentRequirement, setCurrentRequirement] = useState("");
 
-  const { queryResult } = useShow({
+  const { queryResult } = useShow<Event>({
     meta: {
       select: '*'
     }
@@ -524,17 +526,7 @@ export const EventsEdit = () => {
                       />
                     </FormControl>
 
-                    <FormControl
-                      label="Szczegóły dojazdu"
-                      htmlFor="meeting_point_details"
-                    >
-                      <Textarea
-                        id="meeting_point_details"
-                        placeholder="np. Wejście od ul. Bocznej, domofon 12"
-                        rows={2}
-                        {...register("meeting_point_details")}
-                      />
-                    </FormControl>
+
                   </>
                 )}
               </CardContent>

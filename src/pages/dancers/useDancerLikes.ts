@@ -1,11 +1,13 @@
-// src/pages/dancers/useDancerLikes.ts - najprostsza wersja
+// src/pages/dancers/useDancerLikes.ts
 import { useCreate, useList, useNotification } from "@refinedev/core";
 import { useState, useEffect } from "react";
+import { Like } from "./dancers";
+
 
 export const useDancerLikes = () => {
   const [likedDancers, setLikedDancers] = useState<Set<string>>(new Set());
   const { open } = useNotification();
-  const { mutate: createLike, isLoading } = useCreate();
+  const { mutate: createLike, isLoading } = useCreate<Like>();
 
   // Prosta funkcja do polubienia tancerza
   const likeDancer = async (targetDancerId: string, currentDancerId: string) => {
@@ -41,8 +43,6 @@ export const useDancerLikes = () => {
       },
       {
         onSuccess: async () => {
-          // Sprawdź czy druga osoba też polubiła (czy to match)
-          // Możesz to zrobić przez kolejne zapytanie
           open?.({
             type: "success",
             message: "Polubiono",
@@ -79,7 +79,7 @@ export const useDancerLikes = () => {
 
   // Hook do pobierania polubień użytkownika
   const useDancerLikesData = (currentDancerId: string | null) => {
-    const { data: likesData } = useList({
+    const { data: likesData } = useList<Like>({
       resource: "likes",
       filters: currentDancerId ? [
         {
@@ -102,7 +102,7 @@ export const useDancerLikes = () => {
       const newLikedDancers = new Set<string>();
       
       // Po prostu dodaj wszystkie to_dancer_id
-      likesData.data.forEach((like: any) => {
+      likesData.data.forEach((like) => {
         newLikedDancers.add(like.to_dancer_id);
       });
 

@@ -1,5 +1,5 @@
 // src/pages/events/show.tsx
-import { useShow, useNavigation, useGetIdentity, useCreate } from "@refinedev/core";
+import { useShow, useNavigation, useGetIdentity, useCreate, useList } from "@refinedev/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -23,15 +23,17 @@ import { Badge, Button, Separator } from "@/components/ui";
 import { useLoading } from "@/utility";
 import { format, differenceInMinutes } from "date-fns";
 import { pl } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Event, EventParticipant } from "./events";
+import { UserIdentity } from "../dancers/dancers";
 
 export const EventsShow = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity } = useGetIdentity<UserIdentity>();
   const { list, edit } = useNavigation();
-  const { mutate: bookEvent, isLoading: isBooking } = useCreate();
+  const { mutate: bookEvent, isLoading: isBooking } = useCreate<EventParticipant>();
   const [isBooked, setIsBooked] = useState(false);
   
-  const { queryResult } = useShow({
+  const { queryResult } = useShow<Event>({
     meta: {
       select: `*, 
         users!events_organizer_id_fkey(
@@ -40,17 +42,29 @@ export const EventsShow = () => {
           dancers(id, name, profile_photo_url, bio),
           dance_schools(id, name, logo_url, description)
         ),
-        dance_styles(name, category),
-        event_participants(
-          participant_id,
-          status,
-          partner_id
-        )`
+        dance_styles(name, category)`
     }
   });
 
   const { data, isLoading, isError } = queryResult;
   const record = data?.data;
+
+  // Pobierz uczestników wydarzenia
+  const { data: participantsData } = useList<EventParticipant>({
+    resource: "event_participants",
+    filters: [
+      {
+        field: "event_id",
+        operator: "eq",
+        value: record?.id || "",
+      },
+    ],
+    queryOptions: {
+      enabled: !!record?.id,
+    },
+  });
+
+  const eventParticipants = participantsData?.data || [];
 
   const init = useLoading({ isLoading, isError });
   if (init) return init;
@@ -69,8 +83,8 @@ export const EventsShow = () => {
   }
 
   // Sprawdź czy użytkownik jest już zapisany
-  const userParticipation = record.event_participants?.find(
-    (p: any) => p.participant_id === identity?.id
+  const userParticipation = eventParticipants.find(
+    (p) => p.participant_id === identity?.id
   );
 
   const isOrganizer = record.organizer_id === identity?.id;
@@ -85,12 +99,12 @@ export const EventsShow = () => {
     
     if (user.dancers && user.dancers.length > 0) {
       return {
-        type: 'dancer',
+        type: 'dancer' as const,
         ...user.dancers[0]
       };
     } else if (user.dance_schools && user.dance_schools.length > 0) {
       return {
-        type: 'school',
+        type: 'school' as const,
         ...user.dance_schools[0]
       };
     }
@@ -230,12 +244,6 @@ export const EventsShow = () => {
                         {record.address}
                         {record.city && `, ${record.city}`}
                       </p>
-                      {record.meeting_point_details && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          <Info className="inline w-3 h-3 mr-1" />
-                          {record.meeting_point_details}
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
@@ -310,7 +318,7 @@ export const EventsShow = () => {
                       {record.age_min && (
                         <li>• Wiek: {record.age_min}{record.age_max && `-${record.age_max}`} lat</li>
                       )}
-                      {record.requirements?.map((req: string, idx: number) => (
+                      {record.requirements?.map((req, idx) => (
                         <li key={idx}>• {req}</li>
                       ))}
                     </ul>
@@ -459,9 +467,10 @@ export const EventsShow = () => {
                   className="w-full"
                   onClick={() => {
                     if (organizer.type === 'dancer') {
-                      // TODO: Navigate to dancer profile
+                      window.location.href = `/dancers/show/${organizer.id}`;
                     } else {
                       // TODO: Navigate to school profile
+                      console.log('Navigate to school profile:', organizer.id);
                     }
                   }}
                 >
@@ -479,7 +488,7 @@ export const EventsShow = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {record.tags.map((tag: string, idx: number) => (
+                  {record.tags.map((tag, idx) => (
                     <Badge key={idx} variant="secondary">
                       #{tag}
                     </Badge>

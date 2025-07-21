@@ -6,7 +6,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Eye, MapPin, Music, Search, Heart } from "lucide-react";
+import { Eye, MapPin, Music, Search } from "lucide-react";
 import { FlexBox } from "@/components/shared";
 import { PaginationSwitch } from "@/components/navigation";
 import { Lead } from "@/components/reader";
@@ -14,9 +14,11 @@ import { useLoading } from "@/utility";
 import { Badge, Button, Input } from "@/components/ui";
 import { DancerLikeButton } from "./DancerLikeButton";
 import { useState, useEffect } from "react";
+import { Dancer, UserIdentity } from "./dancers";
+
 
 export const DancersList = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity } = useGetIdentity<UserIdentity>();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
@@ -33,18 +35,20 @@ export const DancersList = () => {
     current,
     setCurrent,
     pageSize,
-  } = useTable({
+  } = useTable<Dancer>({
     resource: "dancers",
     meta: {
       select: '*, dancer_dance_styles(skill_level, dance_styles(name))'
     },
-    filters: [
-      {
-        field: "name",
-        operator: "contains",
-        value: debouncedSearchTerm,
-      },
-    ],
+    filters: {
+      initial: [
+        {
+          field: "name",
+          operator: "contains",
+          value: debouncedSearchTerm,
+        },
+      ],
+    },
     sorters: {
       initial: [
         {
@@ -87,12 +91,13 @@ export const DancersList = () => {
     return levels[level] || level;
   };
 
+  const dancers = data?.data || [];
+
   return (
     <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
       <Lead
         title="Tancerze"
         description="Przeglądaj profile tancerzy i znajdź swojego partnera tanecznego"
-        className="mb-6 md:mb-8"
       />
 
       {/* Search Bar */}
@@ -108,12 +113,12 @@ export const DancersList = () => {
 
       {/* Dancers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {data?.data?.map((dancer: any) => {
+        {dancers.map((dancer) => {
           const age = calculateAge(dancer.birth_date);
-          const danceStyles = dancer.dancer_dance_styles?.map((ds: any) => ({
+          const danceStyles = dancer.dancer_dance_styles?.map((ds) => ({
             name: ds.dance_styles?.name,
             level: ds.skill_level
-          })).filter((ds: any) => ds.name) || [];
+          })).filter((ds) => ds.name) || [];
           
           // Nie pokazuj własnego profilu
           const isOwnProfile = identity?.id === dancer.user_id;
@@ -151,7 +156,7 @@ export const DancersList = () => {
                 {/* Dance Styles */}
                 {danceStyles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {danceStyles.slice(0, 3).map((style: any, idx: number) => (
+                    {danceStyles.slice(0, 3).map((style, idx) => (
                       <Badge key={idx} variant="secondary" className="text-xs md:text-sm py-0.5 px-2">
                         <Music className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1" />
                         {style.name}
@@ -204,7 +209,7 @@ export const DancersList = () => {
       </div>
 
       {/* Empty State */}
-      {data?.data?.length === 0 && (
+      {dancers.length === 0 && (
         <div className="text-center py-12 md:py-16">
           <p className="text-muted-foreground text-base md:text-lg">
             Nie znaleziono żadnych tancerzy

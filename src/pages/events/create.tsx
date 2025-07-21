@@ -20,6 +20,7 @@ import { supabaseClient } from "@/utility";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { UserIdentity, DanceStyle } from "../dancers/dancers";
 
 const eventCategories = [
   { value: "lesson", label: "Lekcja indywidualna" },
@@ -52,8 +53,8 @@ const skillLevels = [
 export const EventsCreate = () => {
   const { list } = useNavigation();
   const navigate = useNavigate();
-  const { data: identity } = useGetIdentity();
-  const [danceStyles, setDanceStyles] = useState<any[]>([]);
+  const { data: identity } = useGetIdentity<UserIdentity>();
+  const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [requirements, setRequirements] = useState<string[]>([]);
@@ -136,9 +137,12 @@ export const EventsCreate = () => {
         requirements: requirements.length > 0 ? requirements : null,
         start_datetime: new Date(`${data.event_date}T${data.start_time}`).toISOString(),
         end_datetime: new Date(`${data.event_date}T${data.end_time}`).toISOString(),
-        price_amount: data.price_amount ? parseFloat(data.price_amount) : null,
-        max_participants: data.max_participants ? parseInt(data.max_participants) : null,
-        min_participants: data.min_participants ? parseInt(data.min_participants) : 1,
+        price_amount: data.price_amount && data.price_amount !== '' ? parseFloat(data.price_amount) : null,
+        max_participants: data.max_participants && data.max_participants !== '' ? parseInt(data.max_participants) : null,
+        min_participants: data.min_participants && data.min_participants !== '' ? parseInt(data.min_participants) : 1,
+        age_min: data.age_min && data.age_min !== '' ? parseInt(data.age_min) : null,
+        age_max: data.age_max && data.age_max !== '' ? parseInt(data.age_max) : null,
+        early_bird_discount: data.early_bird_discount && data.early_bird_discount !== '' ? parseFloat(data.early_bird_discount) : null,
         current_participants: 0,
       };
 
@@ -487,17 +491,7 @@ export const EventsCreate = () => {
                       />
                     </FormControl>
 
-                    <FormControl
-                      label="Szczegóły dojazdu"
-                      htmlFor="meeting_point_details"
-                    >
-                      <Textarea
-                        id="meeting_point_details"
-                        placeholder="np. Wejście od ul. Bocznej, domofon 12"
-                        rows={2}
-                        {...register("meeting_point_details")}
-                      />
-                    </FormControl>
+
                   </>
                 )}
               </CardContent>
@@ -685,6 +679,35 @@ export const EventsCreate = () => {
                     {...register("cancellation_policy")}
                   />
                 </FormControl>
+
+                <FormControl
+                  label="Zniżka Early Bird (%)"
+                  htmlFor="early_bird_discount"
+                >
+                  <Input
+                    id="early_bird_discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="np. 10"
+                    {...register("early_bird_discount")}
+                  />
+                </FormControl>
+
+                {watch("early_bird_discount") && (
+                  <FormControl
+                    label="Data końca Early Bird"
+                    htmlFor="early_bird_deadline"
+                  >
+                    <Input
+                      id="early_bird_deadline"
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      {...register("early_bird_deadline")}
+                    />
+                  </FormControl>
+                )}
               </CardContent>
             </Card>
 

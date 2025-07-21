@@ -20,9 +20,11 @@ import { Badge, Button, Input, Tabs, TabsList, TabsTrigger, TabsContent } from "
 import { useState } from "react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { Event } from "./events";
+import { UserIdentity } from "../dancers/dancers";
 
 export const EventsList = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity } = useGetIdentity<UserIdentity>();
   const [searchTerm, setSearchTerm] = useState("");
   const [eventType, setEventType] = useState<"all" | "lesson" | "workshop" | "outdoor" | "party">("all");
   
@@ -31,7 +33,7 @@ export const EventsList = () => {
     current,
     setCurrent,
     pageSize,
-  } = useTable({
+  } = useTable<Event>({
     resource: "events",
     meta: {
       select: `*, 
@@ -99,7 +101,7 @@ export const EventsList = () => {
     return colors[category] || 'default';
   };
 
-  const getOrganizerInfo = (event: any) => {
+  const getOrganizerInfo = (event: Event) => {
     const user = event.users;
     if (!user) return { name: 'Nieznany organizator', photo: null };
     
@@ -160,7 +162,7 @@ export const EventsList = () => {
 
       {/* Events Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {data?.data?.map((event: any) => {
+        {data?.data?.map((event) => {
           const organizer = getOrganizerInfo(event);
           const spotsLeft = event.max_participants ? 
             event.max_participants - event.current_participants : null;
@@ -233,7 +235,7 @@ export const EventsList = () => {
                     )}
                   </div>
                   
-                  {event.price_amount && (
+                  {event.price_amount !== null && event.price_amount !== undefined && (
                     <div className="flex items-center gap-1 text-sm font-medium">
                       <DollarSign className="w-4 h-4" />
                       {event.price_amount} {event.price_currency || 'PLN'}
@@ -252,7 +254,7 @@ export const EventsList = () => {
                 {/* Tags */}
                 {event.tags && event.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-2">
-                    {event.tags.slice(0, 3).map((tag: string, idx: number) => (
+                    {event.tags.slice(0, 3).map((tag, idx) => (
                       <span key={idx} className="text-xs bg-muted px-2 py-1 rounded">
                         #{tag}
                       </span>
