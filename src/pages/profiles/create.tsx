@@ -42,7 +42,9 @@ export const ProfilesCreate = () => {
   const { list } = useNavigation();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>("");
-  const [selectedStyles, setSelectedStyles] = useState<DanceStyleWithLevel[]>([]);
+  const [selectedStyles, setSelectedStyles] = useState<DanceStyleWithLevel[]>(
+    []
+  );
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
@@ -63,17 +65,19 @@ export const ProfilesCreate = () => {
 
   const checkUserAndProfile = async () => {
     try {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
       if (user) {
         setCurrentUser(user);
-        
+
         // Check if user already has a dancer profile
         const { data } = await supabaseClient
-          .from('dancers')
-          .select('id')
-          .eq('user_id', user.id)
+          .from("dancers")
+          .select("id")
+          .eq("user_id", user.id)
           .maybeSingle();
-        
+
         if (data) {
           setHasExistingProfile(true);
         }
@@ -87,10 +91,10 @@ export const ProfilesCreate = () => {
 
   const fetchDanceStyles = async () => {
     const { data, error } = await supabaseClient
-      .from('dance_styles')
-      .select('id, name, category')
-      .order('name');
-    
+      .from("dance_styles")
+      .select("id, name, category")
+      .order("name");
+
     if (data) {
       setDanceStylesFromDB(data);
       console.log("Dance styles from DB:", data);
@@ -112,35 +116,35 @@ export const ProfilesCreate = () => {
   };
 
   const uploadPhoto = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Date.now()}.${fileExt}`;
-    
+
     // Użyj folderu z user_id
     const filePath = `${currentUser.id}/${fileName}`;
-    
+
     const { data, error } = await supabaseClient.storage
-      .from('dancer-photos')
+      .from("dancer-photos")
       .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
+        cacheControl: "3600",
+        upsert: false,
       });
-  
+
     if (error) {
       console.error("Upload error:", error);
       throw error;
     }
-    
-    const { data: { publicUrl } } = supabaseClient.storage
-      .from('dancer-photos')
-      .getPublicUrl(filePath);
-      
+
+    const {
+      data: { publicUrl },
+    } = supabaseClient.storage.from("dancer-photos").getPublicUrl(filePath);
+
     return publicUrl;
   };
   const handleStyleToggle = (styleId: string) => {
-    setSelectedStyles(prev => {
-      const exists = prev.find(s => s.styleId === styleId);
+    setSelectedStyles((prev) => {
+      const exists = prev.find((s) => s.styleId === styleId);
       if (exists) {
-        return prev.filter(s => s.styleId !== styleId);
+        return prev.filter((s) => s.styleId !== styleId);
       } else {
         return [...prev, { styleId, level: "beginner" }];
       }
@@ -148,8 +152,8 @@ export const ProfilesCreate = () => {
   };
 
   const updateStyleLevel = (styleId: string, level: string) => {
-    setSelectedStyles(prev => 
-      prev.map(s => s.styleId === styleId ? { ...s, level } : s)
+    setSelectedStyles((prev) =>
+      prev.map((s) => (s.styleId === styleId ? { ...s, level } : s))
     );
   };
 
@@ -161,7 +165,7 @@ export const ProfilesCreate = () => {
       }
 
       let profilePhotoUrl = "";
-      
+
       // Upload photo w osobnym try-catch
       if (photoFile) {
         try {
@@ -170,7 +174,9 @@ export const ProfilesCreate = () => {
           console.log("Photo uploaded:", profilePhotoUrl);
         } catch (uploadError) {
           console.error("Photo upload failed:", uploadError);
-          alert("Nie udało się przesłać zdjęcia, ale profil zostanie utworzony");
+          alert(
+            "Nie udało się przesłać zdjęcia, ale profil zostanie utworzony"
+          );
           // Kontynuuj bez zdjęcia
         }
       }
@@ -190,11 +196,12 @@ export const ProfilesCreate = () => {
 
         console.log("Inserting dancer:", dancerData);
 
-        const { data: insertedDancer, error: dancerError } = await supabaseClient
-          .from('dancers')
-          .insert(dancerData)
-          .select()
-          .single();
+        const { data: insertedDancer, error: dancerError } =
+          await supabaseClient
+            .from("dancers")
+            .insert(dancerData)
+            .select()
+            .single();
 
         if (dancerError) {
           console.error("Dancer insert error:", dancerError);
@@ -206,7 +213,7 @@ export const ProfilesCreate = () => {
         // Dance styles w osobnym try-catch
         if (selectedStyles.length > 0 && insertedDancer) {
           try {
-            const styleAssociations = selectedStyles.map(style => ({
+            const styleAssociations = selectedStyles.map((style) => ({
               dancer_id: insertedDancer.id,
               dance_style_id: style.styleId, // Teraz to będzie prawdziwe UUID
               skill_level: style.level,
@@ -216,12 +223,14 @@ export const ProfilesCreate = () => {
             console.log("Style associations:", styleAssociations);
 
             const { error: stylesError } = await supabaseClient
-              .from('dancer_dance_styles')
+              .from("dancer_dance_styles")
               .insert(styleAssociations);
 
             if (stylesError) {
               console.error("Styles insert error:", stylesError);
-              alert("Nie udało się dodać stylów tańca, możesz je dodać później edytując profil");
+              alert(
+                "Nie udało się dodać stylów tańca, możesz je dodać później edytując profil"
+              );
             } else {
               console.log("Dance styles added successfully");
             }
@@ -232,12 +241,10 @@ export const ProfilesCreate = () => {
 
         alert("Profil został utworzony pomyślnie!");
         list("profiles");
-        
       } catch (dancerError) {
         console.error("Dancer creation error:", dancerError);
         alert(`Błąd tworzenia profilu: ${dancerError.message}`);
       }
-      
     } catch (error) {
       console.error("General error:", error);
       alert("Wystąpił nieoczekiwany błąd");
@@ -269,11 +276,7 @@ export const ProfilesCreate = () => {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => list("profiles")}
-      >
+      <Button variant="outline" size="sm" onClick={() => list("profiles")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Powrót
       </Button>
@@ -285,7 +288,10 @@ export const ProfilesCreate = () => {
         />
       </FlexBox>
 
-      <Form onSubmit={handleSubmit(handleFormSubmit)} className="max-w-3xl mx-auto">
+      <Form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="max-w-3xl mx-auto"
+      >
         <Card>
           <CardHeader>
             <CardTitle>Podstawowe informacje</CardTitle>
@@ -392,12 +398,18 @@ export const ProfilesCreate = () => {
           <CardContent>
             <FormControl
               label="Wybierz style, które tańczysz"
-              error={selectedStyles.length === 0 ? "Wybierz przynajmniej jeden styl" : undefined}
+              error={
+                selectedStyles.length === 0
+                  ? "Wybierz przynajmniej jeden styl"
+                  : undefined
+              }
               required
             >
               <div className="space-y-4">
                 {danceStylesFromDB.length === 0 ? (
-                  <p className="text-muted-foreground">Ładowanie stylów tańca...</p>
+                  <p className="text-muted-foreground">
+                    Ładowanie stylów tańca...
+                  </p>
                 ) : (
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -405,7 +417,11 @@ export const ProfilesCreate = () => {
                         <Button
                           key={style.id}
                           type="button"
-                          variant={selectedStyles.find(s => s.styleId === style.id) ? "default" : "outline"}
+                          variant={
+                            selectedStyles.find((s) => s.styleId === style.id)
+                              ? "default"
+                              : "outline"
+                          }
                           size="sm"
                           onClick={() => handleStyleToggle(style.id)}
                         >
@@ -420,20 +436,30 @@ export const ProfilesCreate = () => {
                           Określ swój poziom dla każdego wybranego stylu:
                         </p>
                         {selectedStyles.map((selectedStyle) => {
-                          const style = danceStylesFromDB.find(s => s.id === selectedStyle.styleId);
+                          const style = danceStylesFromDB.find(
+                            (s) => s.id === selectedStyle.styleId
+                          );
                           return (
-                            <div key={selectedStyle.styleId} className="flex items-center gap-4 p-3 border rounded-lg">
+                            <div
+                              key={selectedStyle.styleId}
+                              className="flex items-center gap-4 p-3 border rounded-lg"
+                            >
                               <Badge variant="secondary">{style?.name}</Badge>
                               <Select
                                 value={selectedStyle.level}
-                                onValueChange={(value) => updateStyleLevel(selectedStyle.styleId, value)}
+                                onValueChange={(value) =>
+                                  updateStyleLevel(selectedStyle.styleId, value)
+                                }
                               >
                                 <SelectTrigger className="w-48">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {skillLevels.map((level) => (
-                                    <SelectItem key={level.value} value={level.value}>
+                                    <SelectItem
+                                      key={level.value}
+                                      value={level.value}
+                                    >
                                       {level.label}
                                     </SelectItem>
                                   ))}
@@ -469,4 +495,4 @@ export const ProfilesCreate = () => {
       </Form>
     </>
   );
-};  
+};
