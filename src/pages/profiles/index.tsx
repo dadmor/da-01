@@ -17,7 +17,6 @@ export const profilesResource = {
   edit: "/profiles/edit", // Bez :id
   meta: {
     label: "Mój Profil",
-    icon: "User",
   },
 };
 

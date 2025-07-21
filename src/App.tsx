@@ -29,11 +29,14 @@ function App() {
         authProvider={authProvider}
         routerProvider={routerBindings}
         resources={[
-          profilesResource,    // Profil zalogowanego użytkownika
-          danceStylesResource, // Lista stylów tańca
-          matchesResource,     // Dopasowania
-          dancersResource,     // Lista tancerzy
-          eventsResource,      // <-- DODAJ TEN ZASÓB
+          dancersResource,     
+          eventsResource,      
+          profilesResource,    
+          matchesResource,     
+          danceStylesResource, 
+         
+          
+          
         ]}
         options={{
           syncWithLocation: true,

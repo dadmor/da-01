@@ -20,30 +20,17 @@ export const eventsResource = {
   edit: "/events/edit/:id",
   meta: {
     label: "Wydarzenia",
-    icon: "Calendar",
   },
 };
 
 // Routes
 export const eventsRoutes = [
-  <Route
-    key="events-list"
-    path="/events"
-    element={<EventsList />}
-  />,
-  <Route
-    key="events-show"
-    path="/events/show/:id"
-    element={<EventsShow />}
-  />,
+  <Route key="events-list" path="/events" element={<EventsList />} />,
+  <Route key="events-show" path="/events/show/:id" element={<EventsShow />} />,
   <Route
     key="events-create"
     path="/events/create"
     element={<EventsCreate />}
   />,
-  <Route
-    key="events-edit"
-    path="/events/edit/:id"
-    element={<EventsEdit />}
-  />,
+  <Route key="events-edit" path="/events/edit/:id" element={<EventsEdit />} />,
 ];

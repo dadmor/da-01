@@ -6,7 +6,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Eye, MapPin, Music, Search } from "lucide-react";
+import { Eye, MapPin, Music, Search, Trophy } from "lucide-react";
 import { FlexBox } from "@/components/shared";
 import { PaginationSwitch } from "@/components/navigation";
 import { Lead } from "@/components/reader";
@@ -38,7 +38,7 @@ export const DancersList = () => {
   } = useTable<Dancer>({
     resource: "dancers",
     meta: {
-      select: '*, dancer_dance_styles(skill_level, dance_styles(name))'
+      select: '*, dancer_dance_styles(skill_level, dance_styles(name), is_teaching)'
     },
     filters: {
       initial: [
@@ -117,7 +117,8 @@ export const DancersList = () => {
           const age = calculateAge(dancer.birth_date);
           const danceStyles = dancer.dancer_dance_styles?.map((ds) => ({
             name: ds.dance_styles?.name,
-            level: ds.skill_level
+            level: ds.skill_level,
+            isTeaching: ds.is_teaching
           })).filter((ds) => ds.name) || [];
           
           // Nie pokazuj własnego profilu
@@ -148,6 +149,16 @@ export const DancersList = () => {
                         </span>
                       </p>
                     )}
+                    {/* Instructor Badge */}
+                    {dancer.dancer_dance_styles?.some(ds => ds.is_teaching) && (
+                      <Badge 
+                        variant="default" 
+                        className="bg-green-600 text-white absolute top-4 right-4"
+                      >
+                        <Trophy className="w-3 h-3 mr-1" />
+                        Instruktor
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -160,6 +171,9 @@ export const DancersList = () => {
                       <Badge key={idx} variant="secondary" className="text-xs md:text-sm py-0.5 px-2">
                         <Music className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1" />
                         {style.name}
+                        {style.isTeaching && (
+                          <span className="ml-1 text-green-600">•</span>
+                        )}
                       </Badge>
                     ))}
                     {danceStyles.length > 3 && (

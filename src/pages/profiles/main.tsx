@@ -21,13 +21,17 @@ import {
   Users,
   Star,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Clock,
+  Ticket
 } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { supabaseClient } from "@/utility";
 import { Separator } from "@/components/ui/separator";
 import { useGetIdentity } from "@refinedev/core";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
 
 interface UserProfile {
   id: string;
@@ -66,6 +70,22 @@ interface Identity {
   name?: string;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  start_datetime: string;
+  end_datetime: string;
+  event_category: string;
+  location_type: string;
+  address?: string;
+  city?: string;
+  price_amount?: number;
+  current_participants?: number;
+  max_participants?: number;
+  dance_styles?: { name: string };
+  organizer?: { name: string };
+}
+
 export const ProfilesMain = () => {
   const navigate = useNavigate();
   const { data: identity } = useGetIdentity<Identity>();
@@ -74,6 +94,8 @@ export const ProfilesMain = () => {
   const [dancerProfile, setDancerProfile] = useState<DancerProfile | null>(null);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile | null>(null);
   const [activeTab, setActiveTab] = useState<"dancer" | "school">("dancer");
+  const [myOrganizedEvents, setMyOrganizedEvents] = useState<Event[]>([]);
+  const [myParticipatingEvents, setMyParticipatingEvents] = useState<Event[]>([]);
   
   // Statystyki
   const [stats, setStats] = useState({
@@ -93,8 +115,9 @@ export const ProfilesMain = () => {
   }, []);
 
   useEffect(() => {
-    if (identity?.id && dancerProfile?.id) {
+    if (identity?.id) {
       fetchStatistics();
+      fetchMyEvents();
     }
   }, [identity?.id, dancerProfile?.id]);
 
@@ -161,36 +184,113 @@ export const ProfilesMain = () => {
     }
   };
 
-  const fetchStatistics = async () => {
-    if (!identity?.id || !dancerProfile?.id) return;
+  const fetchMyEvents = async () => {
+    if (!identity?.id) return;
 
     try {
-      // Polubienia otrzymane
-      const { count: likesReceived } = await supabaseClient
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('to_dancer_id', dancerProfile.id);
+      // Wydarzenia, które organizuję
+      const { data: organizedEvents } = await supabaseClient
+        .from('events')
+        .select(`
+          *,
+          dance_styles (name)
+        `)
+        .eq('organizer_id', identity.id)
+        .gte('start_datetime', new Date().toISOString())
+        .eq('status', 'active')
+        .order('start_datetime', { ascending: true })
+        .limit(5);
 
-      // Polubienia wysłane
-      const { count: likesSent } = await supabaseClient
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('from_dancer_id', dancerProfile.id);
+      if (organizedEvents) {
+        setMyOrganizedEvents(organizedEvents);
+      }
 
-      // Dopasowania (wzajemne polubienia)
-      const { data: sentLikes } = await supabaseClient
-        .from('likes')
-        .select('to_dancer_id')
-        .eq('from_dancer_id', dancerProfile.id);
+      // Wydarzenia, w których uczestniczę
+      const { data: participatingData } = await supabaseClient
+        .from('event_participants')
+        .select(`
+          event_id,
+          status,
+          events!inner (
+            id,
+            title,
+            start_datetime,
+            end_datetime,
+            event_category,
+            location_type,
+            address,
+            city,
+            price_amount,
+            current_participants,
+            max_participants,
+            dance_styles (name),
+            users!events_organizer_id_fkey (
+              id,
+              dancers (name)
+            )
+          )
+        `)
+        .eq('participant_id', identity.id)
+        .in('status', ['registered', 'confirmed'])
+        .gte('events.start_datetime', new Date().toISOString())
+        .eq('events.status', 'active')
+        .order('events(start_datetime)', { ascending: true })
+        .limit(5);
 
-      const { data: receivedLikes } = await supabaseClient
-        .from('likes')
-        .select('from_dancer_id')
-        .eq('to_dancer_id', dancerProfile.id);
+      if (participatingData) {
+        const events = participatingData
+          .map(p => p.events)
+          .filter((event): event is any => event !== null)
+          .map(event => ({
+            ...event,
+            organizer: event.users?.dancers?.[0] || null
+          }));
+        setMyParticipatingEvents(events);
+      }
 
-      const sentIds = sentLikes?.map(l => l.to_dancer_id) || [];
-      const receivedIds = receivedLikes?.map(l => l.from_dancer_id) || [];
-      const matchCount = sentIds.filter(id => receivedIds.includes(id)).length;
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
+
+  const fetchStatistics = async () => {
+    if (!identity?.id) return;
+
+    try {
+      // Polubienia otrzymane (tylko jeśli mamy profil tancerza)
+      let likesReceived = 0;
+      let likesSent = 0;
+      let matchCount = 0;
+      
+      if (dancerProfile?.id) {
+        const { count: likesReceivedCount } = await supabaseClient
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('to_dancer_id', dancerProfile.id);
+        likesReceived = likesReceivedCount || 0;
+
+        // Polubienia wysłane
+        const { count: likesSentCount } = await supabaseClient
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('from_dancer_id', dancerProfile.id);
+        likesSent = likesSentCount || 0;
+
+        // Dopasowania (wzajemne polubienia)
+        const { data: sentLikes } = await supabaseClient
+          .from('likes')
+          .select('to_dancer_id')
+          .eq('from_dancer_id', dancerProfile.id);
+
+        const { data: receivedLikes } = await supabaseClient
+          .from('likes')
+          .select('from_dancer_id')
+          .eq('to_dancer_id', dancerProfile.id);
+
+        const sentIds = sentLikes?.map(l => l.to_dancer_id) || [];
+        const receivedIds = receivedLikes?.map(l => l.from_dancer_id) || [];
+        matchCount = sentIds.filter(id => receivedIds.includes(id)).length;
+      }
 
       // Wydarzenia utworzone
       const { count: eventsCreated } = await supabaseClient
@@ -223,23 +323,16 @@ export const ProfilesMain = () => {
 
       const uniqueStudents = new Set(participants?.map(p => p.participant_id) || []);
 
-      // TODO: Oceny (gdy będzie tabela reviews)
-      // const { data: reviews } = await supabaseClient
-      //   .from('reviews')
-      //   .select('rating_overall')
-      //   .eq('reviewed_id', identity.id)
-      //   .eq('review_type', 'trainer');
-
       setStats({
-        likesReceived: likesReceived || 0,
-        likesSent: likesSent || 0,
+        likesReceived,
+        likesSent,
         matches: matchCount,
         eventsCreated: eventsCreated || 0,
         eventsAttended: eventsAttended || 0,
         upcomingEvents: upcomingEvents || 0,
         totalStudents: uniqueStudents.size,
-        averageRating: 0, // TODO: Calculate from reviews
-        reviewsCount: 0 // TODO: Count reviews
+        averageRating: 0,
+        reviewsCount: 0
       });
 
     } catch (error) {
@@ -253,6 +346,16 @@ export const ProfilesMain = () => {
 
   const handleEditProfile = () => {
     navigate("/profiles/edit");
+  };
+
+  const getEventCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      'social': 'Impreza',
+      'workshop': 'Warsztaty',
+      'lesson': 'Lekcja',
+      'course': 'Kurs'
+    };
+    return labels[category] || category;
   };
 
   if (loading) {
@@ -473,6 +576,163 @@ export const ProfilesMain = () => {
                           </div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Moje Wydarzenia - dla wszystkich użytkowników */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Moje Wydarzenia
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Wydarzenia w których uczestniczę */}
+                      {myParticipatingEvents.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3 flex items-center gap-2">
+                            <Ticket className="w-4 h-4" />
+                            Wydarzenia, w których uczestniczę
+                          </h4>
+                          <div className="space-y-3">
+                            {myParticipatingEvents.map((event) => (
+                              <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <h5 className="font-medium">{event.title}</h5>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(new Date(event.start_datetime), "EEEE, d MMMM", { locale: pl })}
+                                    </p>
+                                    {event.organizer && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Organizator: {event.organizer.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline">
+                                    {format(new Date(event.start_datetime), "HH:mm")}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <Badge variant="secondary">
+                                    {getEventCategoryLabel(event.event_category)}
+                                  </Badge>
+                                  {event.dance_styles && (
+                                    <div className="flex items-center gap-1">
+                                      <Music className="w-3 h-3" />
+                                      <span>{event.dance_styles.name}</span>
+                                    </div>
+                                  )}
+                                  {event.city && (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      <span>{event.city}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="mt-2 w-full"
+                                  onClick={() => navigate(`/events/show/${event.id}`)}
+                                >
+                                  Zobacz szczegóły
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          {myParticipatingEvents.length === 5 && (
+                            <Button 
+                              variant="link" 
+                              className="w-full mt-2"
+                              onClick={() => navigate('/events?participating=true')}
+                            >
+                              Zobacz wszystkie →
+                            </Button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Wydarzenia które organizuję */}
+                      {myOrganizedEvents.length > 0 && (
+                        <div className={myParticipatingEvents.length > 0 ? "pt-4 border-t" : ""}>
+                          <h4 className="font-medium mb-3 flex items-center gap-2">
+                            <Trophy className="w-4 h-4" />
+                            Wydarzenia, które organizuję
+                          </h4>
+                          <div className="space-y-3">
+                            {myOrganizedEvents.map((event) => (
+                              <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <h5 className="font-medium">{event.title}</h5>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(new Date(event.start_datetime), "EEEE, d MMMM", { locale: pl })}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">
+                                    {format(new Date(event.start_datetime), "HH:mm")}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <Badge variant="secondary">
+                                    {getEventCategoryLabel(event.event_category)}
+                                  </Badge>
+                                  <div className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    <span>
+                                      {event.current_participants}
+                                      {event.max_participants && `/${event.max_participants}`}
+                                    </span>
+                                  </div>
+                                  {event.price_amount !== null && event.price_amount !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                      <DollarSign className="w-3 h-3" />
+                                      <span>
+                                        {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="default" 
+                                  className="mt-2 w-full"
+                                  onClick={() => navigate(`/events/show/${event.id}`)}
+                                >
+                                  Zarządzaj
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          {myOrganizedEvents.length === 5 && (
+                            <Button 
+                              variant="link" 
+                              className="w-full mt-2"
+                              onClick={() => navigate(`/events?organizer=${identity?.id}`)}
+                            >
+                              Zobacz wszystkie →
+                            </Button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Gdy nie ma żadnych wydarzeń */}
+                      {myParticipatingEvents.length === 0 && myOrganizedEvents.length === 0 && (
+                        <div className="text-center py-8">
+                          <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-muted-foreground mb-4">
+                            Nie masz jeszcze żadnych nadchodzących wydarzeń
+                          </p>
+                          <Button 
+                            variant="outline"
+                            onClick={() => navigate('/events')}
+                          >
+                            Przeglądaj wydarzenia
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

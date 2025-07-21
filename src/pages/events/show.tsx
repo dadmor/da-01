@@ -13,9 +13,7 @@ import {
   User,
   School,
   CheckCircle,
-  Info,
   Share2,
-  Heart
 } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
@@ -23,7 +21,6 @@ import { Badge, Button, Separator } from "@/components/ui";
 import { useLoading } from "@/utility";
 import { format, differenceInMinutes } from "date-fns";
 import { pl } from "date-fns/locale";
-import { useState, useEffect } from "react";
 import { Event, EventParticipant } from "./events";
 import { UserIdentity } from "../dancers/dancers";
 
@@ -31,7 +28,6 @@ export const EventsShow = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
   const { list, edit } = useNavigation();
   const { mutate: bookEvent, isLoading: isBooking } = useCreate<EventParticipant>();
-  const [isBooked, setIsBooked] = useState(false);
   
   const { queryResult } = useShow<Event>({
     meta: {
@@ -125,21 +121,27 @@ export const EventsShow = () => {
         resource: "event_participants",
         values: {
           event_id: record.id,
-          event_type: record.event_category,
-          participant_id: identity.id,
+          participant_id: identity.id, // UŻYWAMY USER_ID!
           status: "registered",
         },
       },
       {
         onSuccess: () => {
-          setIsBooked(true);
           alert("Zapisano na wydarzenie!");
-          // Odśwież dane
           queryResult.refetch();
         },
-        onError: (error) => {
+        onError: (error: any) => {
           console.error("Booking error:", error);
-          alert("Nie udało się zapisać na wydarzenie");
+          
+          if (error?.code === '23505') {
+            alert("Jesteś już zapisany na to wydarzenie");
+          } else if (error?.code === '23503') {
+            alert("Błąd zapisu. Sprawdź czy masz konto użytkownika.");
+          } else if (error?.code === '42501') {
+            alert("Brak uprawnień do zapisu.");
+          } else {
+            alert(`Błąd: ${error.message || 'Nieznany błąd'}`);
+          }
         },
       }
     );

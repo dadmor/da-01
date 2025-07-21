@@ -81,9 +81,19 @@ export const EventsEdit = () => {
     formState: { errors, isSubmitting },
   } = useForm();
 
-  const eventCategory = watch("event_category");
   const locationType = watch("location_type");
   const isRecurring = watch("is_recurring");
+
+  const fetchDanceStyles = async () => {
+    const { data } = await supabaseClient
+      .from("dance_styles")
+      .select("id, name, category")
+      .order("name");
+    
+    if (data) {
+      setDanceStyles(data);
+    }
+  };
 
   useEffect(() => {
     fetchDanceStyles();
@@ -128,17 +138,6 @@ export const EventsEdit = () => {
     );
   }
 
-  const fetchDanceStyles = async () => {
-    const { data } = await supabaseClient
-      .from("dance_styles")
-      .select("id, name, category")
-      .order("name");
-    
-    if (data) {
-      setDanceStyles(data);
-    }
-  };
-
   const addTag = () => {
     if (currentTag && !tags.includes(currentTag)) {
       setTags([...tags, currentTag]);
@@ -170,9 +169,12 @@ export const EventsEdit = () => {
         requirements: requirements.length > 0 ? requirements : null,
         start_datetime: new Date(`${data.event_date}T${data.start_time}`).toISOString(),
         end_datetime: new Date(`${data.event_date}T${data.end_time}`).toISOString(),
-        price_amount: data.price_amount ? parseFloat(data.price_amount) : null,
-        max_participants: data.max_participants ? parseInt(data.max_participants) : null,
-        min_participants: data.min_participants ? parseInt(data.min_participants) : 1,
+        price_amount: data.price_amount && data.price_amount !== '' ? parseFloat(data.price_amount) : null,
+        max_participants: data.max_participants && data.max_participants !== '' ? parseInt(data.max_participants) : null,
+        min_participants: data.min_participants && data.min_participants !== '' ? parseInt(data.min_participants) : 1,
+        age_min: data.age_min && data.age_min !== '' ? parseInt(data.age_min) : null,
+        age_max: data.age_max && data.age_max !== '' ? parseInt(data.age_max) : null,
+        early_bird_discount: data.early_bird_discount && data.early_bird_discount !== '' ? parseFloat(data.early_bird_discount) : null,
       };
 
       // Usuń niepotrzebne pola
