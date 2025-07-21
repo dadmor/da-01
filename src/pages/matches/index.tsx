@@ -5,9 +5,9 @@ import { MatchesList } from "./list";
 // Komponenty
 export { MatchesList } from "./list";
 
-// Resource definition
+// Resource definition - używamy likes jako źródło danych
 export const matchesResource = {
-  name: "matches",
+  name: "likes", // Zmiana! Używamy tabeli likes
   list: "/matches",
   meta: {
     canDelete: false,
@@ -23,4 +23,3 @@ export const matchesRoutes = [
     element={<MatchesList />}
   />,
 ];
-

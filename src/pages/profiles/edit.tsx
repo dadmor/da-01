@@ -16,6 +16,8 @@ import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
 import { supabaseClient } from "@/utility";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 
 const skillLevels = [
@@ -29,6 +31,7 @@ interface DanceStyleWithLevel {
   styleId: string;
   level: string;
   yearsExperience?: number;
+  isTeaching?: boolean;
 }
 
 interface DanceStyle {
@@ -88,7 +91,8 @@ export const ProfilesEdit = () => {
           dancer_dance_styles (
             dance_style_id,
             skill_level,
-            years_experience
+            years_experience,
+            is_teaching
           )
         `)
         .eq('user_id', user.id)
@@ -128,6 +132,7 @@ export const ProfilesEdit = () => {
             styleId: ds.dance_style_id,
             level: ds.skill_level,
             yearsExperience: ds.years_experience,
+            isTeaching: ds.is_teaching || false,
           }))
         );
       }
@@ -180,7 +185,7 @@ export const ProfilesEdit = () => {
       if (exists) {
         return prev.filter(s => s.styleId !== styleId);
       } else {
-        return [...prev, { styleId, level: "beginner" }];
+        return [...prev, { styleId, level: "beginner", isTeaching: false }];
       }
     });
   };
@@ -252,6 +257,7 @@ export const ProfilesEdit = () => {
           dance_style_id: style.styleId,
           skill_level: style.level,
           years_experience: style.yearsExperience || 0,
+          is_teaching: style.isTeaching || false,
         }));
 
         const { error } = await supabaseClient
@@ -453,23 +459,75 @@ export const ProfilesEdit = () => {
                         {selectedStyles.map((selectedStyle) => {
                           const style = danceStylesFromDB.find(s => s.id === selectedStyle.styleId);
                           return (
-                            <div key={selectedStyle.styleId} className="flex items-center gap-4 p-3 border rounded-lg">
-                              <Badge variant="secondary">{style?.name}</Badge>
-                              <Select
-                                value={selectedStyle.level}
-                                onValueChange={(value) => updateStyleLevel(selectedStyle.styleId, value)}
-                              >
-                                <SelectTrigger className="w-48">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {skillLevels.map((level) => (
-                                    <SelectItem key={level.value} value={level.value}>
-                                      {level.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            <div key={selectedStyle.styleId} className="p-4 border rounded-lg space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Badge variant="secondary" className="text-base">
+                                  {style?.name}
+                                </Badge>
+                                <Select
+                                  value={selectedStyle.level}
+                                  onValueChange={(value) => updateStyleLevel(selectedStyle.styleId, value)}
+                                >
+                                  <SelectTrigger className="w-48">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {skillLevels.map((level) => (
+                                      <SelectItem key={level.value} value={level.value}>
+                                        {level.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {/* OPCJA NAUCZANIA - TO JEST KLUCZOWE! */}
+                              <div className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    id={`teaching-${selectedStyle.styleId}`}
+                                    checked={selectedStyle.isTeaching || false}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedStyles(prev => 
+                                        prev.map(s => 
+                                          s.styleId === selectedStyle.styleId 
+                                            ? { ...s, isTeaching: checked }
+                                            : s
+                                        )
+                                      );
+                                    }}
+                                  />
+                                  <Label 
+                                    htmlFor={`teaching-${selectedStyle.styleId}`}
+                                    className="font-medium cursor-pointer"
+                                  >
+                                    Uczę tego stylu
+                                  </Label>
+                                </div>
+                                
+                                {selectedStyle.isTeaching && (
+                                  <div className="flex items-center gap-2">
+                                    <Label className="text-sm">Lat doświadczenia:</Label>
+                                    <Input
+                                      type="number"
+                                      className="w-20"
+                                      min="0"
+                                      max="50"
+                                      value={selectedStyle.yearsExperience || ''}
+                                      onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 0;
+                                        setSelectedStyles(prev => 
+                                          prev.map(s => 
+                                            s.styleId === selectedStyle.styleId 
+                                              ? { ...s, yearsExperience: value }
+                                              : s
+                                          )
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}

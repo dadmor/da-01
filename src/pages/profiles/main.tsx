@@ -17,12 +17,17 @@ import {
   Calendar,
   Heart,
   MessageCircle,
-  Settings
+  Settings,
+  Users,
+  Star,
+  TrendingUp,
+  DollarSign
 } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { supabaseClient } from "@/utility";
 import { Separator } from "@/components/ui/separator";
+import { useGetIdentity } from "@refinedev/core";
 
 interface UserProfile {
   id: string;
@@ -37,7 +42,7 @@ interface DancerProfile {
   birth_date: string;
   profile_photo_url: string;
   location_address: string;
-  dance_styles: string[];
+  dance_styles: any[];
   skill_level: string;
   created_at: string;
 }
@@ -57,15 +62,32 @@ interface SchoolProfile {
 
 export const ProfilesMain = () => {
   const navigate = useNavigate();
+  const { data: identity } = useGetIdentity();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [dancerProfile, setDancerProfile] = useState<DancerProfile | null>(null);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile | null>(null);
   const [activeTab, setActiveTab] = useState<"dancer" | "school">("dancer");
+  
+  // Statystyki
+  const [stats, setStats] = useState({
+    likesReceived: 0,
+    likesSent: 0,
+    matches: 0,
+    eventsCreated: 0,
+    eventsAttended: 0,
+    upcomingEvents: 0,
+    totalStudents: 0,
+    averageRating: 0,
+    reviewsCount: 0
+  });
 
   useEffect(() => {
     fetchUserProfiles();
-  }, []);
+    if (identity?.id) {
+      fetchStatistics();
+    }
+  }, [identity]);
 
   const fetchUserProfiles = async () => {
     try {
@@ -97,6 +119,8 @@ export const ProfilesMain = () => {
           dancer_dance_styles (
             dance_style_id,
             skill_level,
+            is_teaching,
+            years_experience,
             dance_styles (name)
           )
         `)
@@ -106,7 +130,7 @@ export const ProfilesMain = () => {
       if (dancerData) {
         setDancerProfile({
           ...dancerData,
-          dance_styles: dancerData.dancer_dance_styles?.map((ds: any) => ds.dance_styles?.name).filter(Boolean) || []
+          dance_styles: dancerData.dancer_dance_styles || []
         });
       }
 
@@ -128,6 +152,92 @@ export const ProfilesMain = () => {
     }
   };
 
+  const fetchStatistics = async () => {
+    if (!identity?.id || !dancerProfile?.id) return;
+
+    try {
+      // Polubienia otrzymane
+      const { count: likesReceived } = await supabaseClient
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('to_dancer_id', dancerProfile.id);
+
+      // Polubienia wysłane
+      const { count: likesSent } = await supabaseClient
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('from_dancer_id', dancerProfile.id);
+
+      // Dopasowania (wzajemne polubienia)
+      const { data: sentLikes } = await supabaseClient
+        .from('likes')
+        .select('to_dancer_id')
+        .eq('from_dancer_id', dancerProfile.id);
+
+      const { data: receivedLikes } = await supabaseClient
+        .from('likes')
+        .select('from_dancer_id')
+        .eq('to_dancer_id', dancerProfile.id);
+
+      const sentIds = sentLikes?.map(l => l.to_dancer_id) || [];
+      const receivedIds = receivedLikes?.map(l => l.from_dancer_id) || [];
+      const matchCount = sentIds.filter(id => receivedIds.includes(id)).length;
+
+      // Wydarzenia utworzone
+      const { count: eventsCreated } = await supabaseClient
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('organizer_id', identity.id);
+
+      // Wydarzenia uczestnictwo
+      const { count: eventsAttended } = await supabaseClient
+        .from('event_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('participant_id', identity.id)
+        .in('status', ['registered', 'confirmed']);
+
+      // Nadchodzące wydarzenia
+      const { count: upcomingEvents } = await supabaseClient
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('organizer_id', identity.id)
+        .gte('start_datetime', new Date().toISOString())
+        .eq('status', 'active');
+
+      // Liczba uczniów (unikalni uczestnicy wydarzeń)
+      const { data: participants } = await supabaseClient
+        .from('event_participants')
+        .select('participant_id')
+        .eq('event_type', 'lesson')
+        .in('status', ['registered', 'confirmed'])
+        .neq('participant_id', identity.id);
+
+      const uniqueStudents = new Set(participants?.map(p => p.participant_id) || []);
+
+      // TODO: Oceny (gdy będzie tabela reviews)
+      // const { data: reviews } = await supabaseClient
+      //   .from('reviews')
+      //   .select('rating_overall')
+      //   .eq('reviewed_id', identity.id)
+      //   .eq('review_type', 'trainer');
+
+      setStats({
+        likesReceived: likesReceived || 0,
+        likesSent: likesSent || 0,
+        matches: matchCount,
+        eventsCreated: eventsCreated || 0,
+        eventsAttended: eventsAttended || 0,
+        upcomingEvents: upcomingEvents || 0,
+        totalStudents: uniqueStudents.size,
+        averageRating: 0, // TODO: Calculate from reviews
+        reviewsCount: 0 // TODO: Count reviews
+      });
+
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+
   const handleCreateProfile = () => {
     navigate("/profiles/create");
   };
@@ -145,6 +255,7 @@ export const ProfilesMain = () => {
   }
 
   const hasAnyProfile = dancerProfile || schoolProfile;
+  const isInstructor = dancerProfile?.dance_styles?.some((ds: any) => ds.is_teaching);
 
   return (
     <>
@@ -205,7 +316,69 @@ export const ProfilesMain = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Quick Stats */}
+          {dancerProfile && (
+            <GridBox className="mb-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Heart className="w-5 h-5 text-pink-500" />
+                    <span className="font-medium">Polubienia</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stats.likesReceived}</p>
+                  <p className="text-sm text-muted-foreground">otrzymanych</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {stats.likesSent} wysłanych
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Users className="w-5 h-5 text-blue-500" />
+                    <span className="font-medium">Dopasowania</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stats.matches}</p>
+                  <p className="text-sm text-muted-foreground">wzajemnych</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Calendar className="w-5 h-5 text-green-500" />
+                    <span className="font-medium">Wydarzenia</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stats.eventsAttended}</p>
+                  <p className="text-sm text-muted-foreground">uczestnictwa</p>
+                  {isInstructor && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {stats.eventsCreated} utworzonych
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {isInstructor && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Trophy className="w-5 h-5 text-yellow-500" />
+                      <span className="font-medium">Uczniowie</span>
+                    </div>
+                    <p className="text-2xl font-bold">{stats.totalStudents}</p>
+                    <p className="text-sm text-muted-foreground">unikalnych</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {stats.upcomingEvents} nadchodzących zajęć
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </GridBox>
+          )}
+
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dancer" | "school")}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="dancer" disabled={!dancerProfile}>
@@ -255,10 +428,16 @@ export const ProfilesMain = () => {
                           </div>
                           <p className="text-sm">{dancerProfile.bio}</p>
                           <div className="flex flex-wrap gap-2">
-                            {dancerProfile.dance_styles?.map((style) => (
-                              <Badge key={style} variant="secondary">
+                            {dancerProfile.dance_styles?.map((ds: any, idx: number) => (
+                              <Badge 
+                                key={idx} 
+                                variant={ds.is_teaching ? "default" : "secondary"}
+                              >
                                 <Music className="w-3 h-3 mr-1" />
-                                {style}
+                                {ds.dance_styles?.name}
+                                {ds.is_teaching && (
+                                  <Trophy className="w-3 h-3 ml-1" />
+                                )}
                               </Badge>
                             ))}
                           </div>
@@ -267,50 +446,72 @@ export const ProfilesMain = () => {
                     </CardContent>
                   </Card>
 
-                  <GridBox>
+                  {/* Panel Instruktora */}
+                  {isInstructor && (
                     <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Heart className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">Polubienia</span>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5" />
+                          Panel Instruktora
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Card>
+                            <CardContent className="pt-4">
+                              <p className="text-sm text-muted-foreground">Nadchodzące zajęcia</p>
+                              <p className="text-2xl font-bold">{stats.upcomingEvents}</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="pt-4">
+                              <p className="text-sm text-muted-foreground">Łącznie uczniów</p>
+                              <p className="text-2xl font-bold">{stats.totalStudents}</p>
+                            </CardContent>
+                          </Card>
                         </div>
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">otrzymanych polubień</p>
+
+                        <div className="space-y-3 pt-2">
+                          <Button 
+                            className="w-full"
+                            onClick={() => navigate("/events/create")}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Utwórz nowe wydarzenie
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => navigate(`/events?organizer=${identity?.id}`)}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            Zarządzaj wydarzeniami
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="w-full"
+                            disabled
+                          >
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Finanse (wkrótce)
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
+                  )}
 
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3 mb-2">
-                          <MessageCircle className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">Wiadomości</span>
-                        </div>
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">aktywnych czatów</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Trophy className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">Dopasowania</span>
-                        </div>
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">wzajemnych dopasowań</p>
-                      </CardContent>
-                    </Card>
-                  </GridBox>
-
+                  {/* Aktywność */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Ustawienia profilu</CardTitle>
+                      <CardTitle className="text-lg">Aktywność</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <FlexBox>
                         <div>
                           <p className="font-medium">Widoczność profilu</p>
-                          <p className="text-sm text-muted-foreground">Twój profil jest widoczny dla innych</p>
+                          <p className="text-sm text-muted-foreground">
+                            Twój profil jest widoczny dla innych
+                          </p>
                         </div>
                         <Badge variant="outline">Aktywny</Badge>
                       </FlexBox>
