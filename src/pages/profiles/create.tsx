@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "@refinedev/react-hook-form";
 import { useNavigation } from "@refinedev/core";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -40,6 +41,7 @@ interface DanceStyle {
 
 export const ProfilesCreate = () => {
   const { list } = useNavigation();
+  const navigate = useNavigate();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [selectedStyles, setSelectedStyles] = useState<DanceStyleWithLevel[]>(
@@ -205,7 +207,25 @@ export const ProfilesCreate = () => {
 
         if (dancerError) {
           console.error("Dancer insert error:", dancerError);
-          throw dancerError;
+          
+          // Sprawdź specyficzne błędy
+          if (dancerError.code === '23514') {
+            if (dancerError.message.includes('chk_dancer_adult')) {
+              alert("Musisz mieć ukończone 18 lat, aby utworzyć profil tancerza.");
+              return;
+            } else if (dancerError.message.includes('chk_dancer_bio_length')) {
+              alert("Opis jest za długi (maksymalnie 500 znaków).");
+              return;
+            }
+          } else if (dancerError.code === '23505') {
+            alert("Profil dla tego użytkownika już istnieje.");
+            navigate("/profiles/main");
+            return;
+          }
+          
+          // Domyślny komunikat błędu
+          alert(`Błąd tworzenia profilu: ${dancerError.message || 'Nieznany błąd'}`);
+          return;
         }
 
         console.log("Dancer created:", insertedDancer);
@@ -240,10 +260,14 @@ export const ProfilesCreate = () => {
         }
 
         alert("Profil został utworzony pomyślnie!");
-        list("profiles");
+        navigate("/profiles/main");
       } catch (dancerError) {
         console.error("Dancer creation error:", dancerError);
-        alert(`Błąd tworzenia profilu: ${dancerError.message}`);
+        // Properly handle the unknown error type
+        const errorMessage = dancerError instanceof Error 
+          ? dancerError.message 
+          : 'Nieznany błąd';
+        alert(`Błąd tworzenia profilu: ${errorMessage}`);
       }
     } catch (error) {
       console.error("General error:", error);
@@ -265,7 +289,7 @@ export const ProfilesCreate = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-lg mb-4">Już posiadasz profil tancerza!</p>
-            <Button onClick={() => list("profiles")}>
+            <Button onClick={() => navigate("/profiles/main")}>
               Przejdź do swojego profilu
             </Button>
           </CardContent>
@@ -276,7 +300,7 @@ export const ProfilesCreate = () => {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => list("profiles")}>
+      <Button variant="outline" size="sm" onClick={() => navigate("/profiles/main")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Powrót
       </Button>
@@ -322,8 +346,22 @@ export const ProfilesCreate = () => {
                 <Input
                   id="birth_date"
                   type="date"
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
                   {...register("birth_date", {
                     required: "Data urodzenia jest wymagana",
+                    validate: {
+                      isAdult: (value) => {
+                        const birthDate = new Date(value);
+                        const today = new Date();
+                        const age = today.getFullYear() - birthDate.getFullYear();
+                        const monthDiff = today.getMonth() - birthDate.getMonth();
+                        const dayDiff = today.getDate() - birthDate.getDate();
+                        
+                        const realAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+                        
+                        return realAge >= 18 || "Musisz mieć ukończone 18 lat";
+                      }
+                    }
                   })}
                 />
               </FormControl>
@@ -481,7 +519,7 @@ export const ProfilesCreate = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => list("profiles")}
+            onClick={() => navigate("/profiles/main")}
           >
             Anuluj
           </Button>

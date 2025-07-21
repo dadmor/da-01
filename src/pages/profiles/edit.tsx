@@ -76,7 +76,7 @@ export const ProfilesEdit = () => {
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) {
-        navigate("/profiles");
+        navigate("/profiles/create");
         return;
       }
 
@@ -96,13 +96,13 @@ export const ProfilesEdit = () => {
 
       if (error) {
         console.error("Error fetching profile:", error);
-        navigate("/profiles");
+        navigate("/profiles/create");
         return;
       }
 
       if (!dancerData) {
         console.error("No dancer profile found");
-        navigate("/profiles");
+        navigate("/profiles/create");
         return;
       }
 
@@ -133,7 +133,7 @@ export const ProfilesEdit = () => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      navigate("/profiles");
+      navigate("/profiles/create");
     } finally {
       setLoading(false);
     }
@@ -222,7 +222,19 @@ export const ProfilesEdit = () => {
 
       if (updateError) {
         console.error("Update error:", updateError);
-        alert("Błąd podczas aktualizacji profilu");
+        
+        // Sprawdź specyficzne błędy
+        if (updateError.code === '23514') {
+          if (updateError.message.includes('chk_dancer_adult')) {
+            alert("Musisz mieć ukończone 18 lat.");
+            return;
+          } else if (updateError.message.includes('chk_dancer_bio_length')) {
+            alert("Opis jest za długi (maksymalnie 500 znaków).");
+            return;
+          }
+        }
+        
+        alert(`Błąd podczas aktualizacji profilu: ${updateError.message || 'Nieznany błąd'}`);
         return;
       }
 
@@ -253,7 +265,7 @@ export const ProfilesEdit = () => {
       }
 
       alert("Profil został zaktualizowany!");
-      navigate("/profiles");
+      navigate("/profiles/main");
 
     } catch (error) {
       console.error("Error in form submission:", error);
@@ -278,7 +290,7 @@ export const ProfilesEdit = () => {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => navigate("/profiles")}
+        onClick={() => navigate("/profiles/main")}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Powrót do profilu
@@ -322,8 +334,22 @@ export const ProfilesEdit = () => {
                 <Input
                   id="birth_date"
                   type="date"
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
                   {...register("birth_date", {
                     required: "Data urodzenia jest wymagana",
+                    validate: {
+                      isAdult: (value) => {
+                        const birthDate = new Date(value);
+                        const today = new Date();
+                        const age = today.getFullYear() - birthDate.getFullYear();
+                        const monthDiff = today.getMonth() - birthDate.getMonth();
+                        const dayDiff = today.getDate() - birthDate.getDate();
+                        
+                        const realAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+                        
+                        return realAge >= 18 || "Musisz mieć ukończone 18 lat";
+                      }
+                    }
                   })}
                 />
               </FormControl>
@@ -460,7 +486,7 @@ export const ProfilesEdit = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/profiles")}
+            onClick={() => navigate("/profiles/main")}
           >
             Anuluj
           </Button>

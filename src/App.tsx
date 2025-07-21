@@ -1,29 +1,23 @@
-// App.tsx
+// src/App.tsx
 import { Authenticated, ErrorComponent, Refine } from "@refinedev/core";
 import routerBindings, {
   CatchAllNavigate,
   DocumentTitleHandler,
-  NavigateToResource,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router";
 import { dataProvider, liveProvider } from "@refinedev/supabase";
-import { BrowserRouter, Outlet, Route, Routes } from "react-router";
+import { BrowserRouter, Outlet, Route, Routes, Navigate } from "react-router";
 import { Layout } from "./components/layout";
 import { authProvider, supabaseClient } from "./utility";
 
-// Import all resources
+// Import zasobów
 import { profilesResource, profilesRoutes } from "./pages/profiles";
-import { dancersResource, dancersRoutes } from "./pages/dancers";
-import { danceSchoolsResource, danceSchoolsRoutes } from "./pages/dance-schools";
 import { danceStylesResource, danceStylesRoutes } from "./pages/dance-styles";
 import { matchesResource, matchesRoutes } from "./pages/matches";
-import { outdoorEventsResource, outdoorEventsRoutes } from "./pages/outdoor-events";
-import { schoolEventsResource, schoolEventsRoutes } from "./pages/school-events";
-import { chatConversationsResource, chatConversationsRoutes } from "./pages/chat-conversations";
+import { dancersResource, dancersRoutes } from "./pages/dancers";
 
 import { authRoutes } from "./pages/auth";
 import LandingPage from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -34,41 +28,24 @@ function App() {
         authProvider={authProvider}
         routerProvider={routerBindings}
         resources={[
-          profilesResource,
-          dancersResource,
-          danceSchoolsResource,
-          danceStylesResource,
-          matchesResource,
-          outdoorEventsResource,
-          schoolEventsResource,
-          chatConversationsResource,
+          profilesResource,    // Profil zalogowanego użytkownika
+          danceStylesResource, // Lista stylów tańca
+          matchesResource,     // Dopasowania
+          dancersResource,     // Lista tancerzy
         ]}
         options={{
           syncWithLocation: true,
           warnWhenUnsavedChanges: true,
           useNewQueryKeys: true,
-          liveMode: "auto", // Enable realtime for chat
+          liveMode: "auto",
         }}
       >
         <Routes>
-          {/* Public routes */}
+          {/* Publiczne trasy */}
           <Route path="/" element={<LandingPage />} />
           {...authRoutes}
 
-          {/* Dashboard route - dla zalogowanych użytkowników */}
-          <Route
-            path="/dashboard"
-            element={
-              <Authenticated
-                key="dashboard"
-                fallback={<CatchAllNavigate to="/login" />}
-              >
-                <Dashboard />
-              </Authenticated>
-            }
-          />
-
-          {/* Protected routes */}
+          {/* Chronione trasy */}
           <Route
             element={
               <Authenticated
@@ -81,17 +58,30 @@ function App() {
               </Authenticated>
             }
           >
+            {/* Przekierowanie z /profiles na /profiles/show jeśli to jest potrzebne */}
+            <Route path="/profiles" element={<Navigate to="/profiles/show" replace />} />
+            
             {...profilesRoutes}
-            {...dancersRoutes}
-            {...danceSchoolsRoutes}
             {...danceStylesRoutes}
             {...matchesRoutes}
-            {...outdoorEventsRoutes}
-            {...schoolEventsRoutes}
-            {...chatConversationsRoutes}
+            {...dancersRoutes}
 
+            {/* Catch all dla nieznanych tras */}
             <Route path="*" element={<ErrorComponent />} />
           </Route>
+
+          {/* Dodatkowe zabezpieczenie - jeśli użytkownik trafi na główną stronę będąc niezalogowanym */}
+          <Route 
+            path="*" 
+            element={
+              <Authenticated
+                key="catch-all"
+                fallback={<Navigate to="/login" replace />}
+              >
+                <Navigate to="/profiles" replace />
+              </Authenticated>
+            } 
+          />
         </Routes>
 
         <UnsavedChangesNotifier />

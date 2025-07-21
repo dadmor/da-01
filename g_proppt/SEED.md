@@ -1,0 +1,48 @@
+-- ===========================================
+-- DANE POCZĄTKOWE
+-- ===========================================
+
+-- Wstawianie stylów tańca
+INSERT INTO dance_styles (name, category, description) VALUES
+    ('Salsa', 'latin', 'Energiczny taniec latynoamerykański pochodzący z Kuby'),
+    ('Bachata', 'latin', 'Romantyczny taniec z Dominikany charakteryzujący się bliskością partnerów'),
+    ('Kizomba', 'african', 'Zmysłowy taniec z Angoli, znany z wolnych, płynnych ruchów'),
+    ('Tango Argentyńskie', 'latin', 'Namiętny taniec z Buenos Aires, pełen improwizacji'),
+    ('Walc Wiedeński', 'standard', 'Klasyczny taniec towarzyski w rytmie 3/4'),
+    ('Walc Angielski', 'standard', 'Wolniejszy wariant walca z charakterystycznymi falowaniami'),
+    ('Tango', 'standard', 'Standardowa wersja tanga w tańcach towarzyskich'),
+    ('Foxtrot', 'standard', 'Płynny taniec towarzyski w rytmie 4/4'),
+    ('Quickstep', 'standard', 'Szybki, energiczny taniec standardowy'),
+    ('Samba', 'latin', 'Brazylijski taniec pełen energii i radości'),
+    ('Cha-cha', 'latin', 'Kubański taniec z charakterystycznym rytmem'),
+    ('Rumba', 'latin', 'Wolny, zmysłowy taniec latynoamerykański'),
+    ('Jive', 'latin', 'Szybki taniec wywodzący się z rock and rolla'),
+    ('Paso Doble', 'latin', 'Dramatyczny taniec inspirowany corridą'),
+    ('Hip-Hop', 'street', 'Nowoczesny taniec uliczny z elementami freestyle'),
+    ('Breaking', 'street', 'Akrobatyczny taniec uliczny, znany też jako breakdance'),
+    ('Popping', 'street', 'Taniec oparty na technice napinania i rozluźniania mięśni'),
+    ('Locking', 'street', 'Funk dance z charakterystycznymi "zamrożeniami"'),
+    ('House', 'street', 'Taniec klubowy z szybką pracą nóg'),
+    ('Waacking', 'street', 'Ekspresyjny taniec z charakterystycznymi ruchami rąk'),
+    ('Vogue', 'street', 'Taniec inspirowany pozami z magazynów mody'),
+    ('Jazz', 'modern', 'Ekspresyjny taniec sceniczny z elementami techniki klasycznej'),
+    ('Modern Jazz', 'modern', 'Współczesna forma jazzu tanecznego'),
+    ('Contemporary', 'modern', 'Współczesny taniec łączący różne techniki'),
+    ('Modern', 'modern', 'Taniec współczesny powstały jako alternatywa dla baletu'),
+    ('Ballet', 'classical', 'Klasyczny taniec z precyzyjną techniką'),
+    ('Balet Współczesny', 'classical', 'Nowoczesna interpretacja baletu klasycznego'),
+    ('Swing', 'social', 'Taniec towarzyski z lat 20-40, obejmujący Lindy Hop'),
+    ('Lindy Hop', 'social', 'Energiczny taniec swingowy z Harlemu'),
+    ('Charleston', 'social', 'Popularny taniec z lat 20. XX wieku'),
+    ('Balboa', 'social', 'Taniec swingowy tańczony w bliskim objęciu'),
+    ('West Coast Swing', 'social', 'Płynny taniec swingowy z elementami improwizacji'),
+    ('Zouk', 'latin', 'Brazylijski taniec z płynnymi ruchami głowy i ciała'),
+    ('Merengue', 'latin', 'Prosty taniec z Dominikany w rytmie 2/4'),
+    ('Reggaeton', 'latin', 'Nowoczesny taniec latynoski z wpływami hip-hopu'),
+    ('Afro', 'african', 'Tradycyjne tańce afrykańskie'),
+    ('Dancehall', 'caribbean', 'Taniec jamajski z energicznymi ruchami'),
+    ('Belly Dance', 'oriental', 'Taniec brzucha z Bliskiego Wschodu'),
+    ('Flamenco', 'spanish', 'Tradycyjny taniec hiszpański z Andaluzji'),
+    ('Pole Dance', 'fitness', 'Taniec na rurze łączący siłę i grację'),
+    ('Heels', 'modern', 'Taniec w szpilkach, łączący różne style')
+ON CONFLICT (name) DO NOTHING;

@@ -1,17 +1,9 @@
 // utility/auth/useRegistration.ts
 
 import React from "react";
-import { useRegister } from "@refinedev/core";
 import { useNavigate } from "react-router-dom";
 import { useFormSchemaStore } from "@/utility/llmFormWizard";
-import { AuthError } from "./authErrors";
-
-interface RegisterVariables {
-  email: string;
-  password: string;
-  role: string;
-  operator_id?: string;
-}
+import { authProvider } from "./authProvider";
 
 interface UseRegistrationResult {
   isLoading: boolean;
@@ -22,109 +14,60 @@ interface UseRegistrationResult {
   processData: any;
 }
 
-// Typy dla odpowiedzi z authProvider
-interface RegisterSuccessResponse {
-  success: true;
-  user: any;
-  session: any;
-}
-
-interface RegisterErrorResponse {
-  success: false;
-  error: AuthError;
-}
-
 export const useRegistration = (): UseRegistrationResult => {
   const navigate = useNavigate();
   const { getData, setData } = useFormSchemaStore();
-  const [hasAttempted, setHasAttempted] = React.useState(false);
-
-  const {
-    mutate: registerMutation,
-    isLoading,
-    error: hookError,
-    data: registerData,
-  } = useRegister<RegisterVariables>();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const processData = getData("registration");
 
-  // Poprawna obsługa błędów z type guards
-  const registrationError = React.useMemo(() => {
-    if (!hasAttempted) return null;
-
-    // Hook error od React Query
-    if (hookError) {
-      if (hookError instanceof Error) {
-        return hookError.message;
-      }
-      return "Wystąpił błąd podczas rejestracji.";
+  // Funkcja rejestracji - bezpośrednie wywołanie authProvider
+  const register = React.useCallback(async () => {
+    if (!authProvider.register) {
+      setError("Funkcja rejestracji nie jest dostępna");
+      return;
     }
 
-    // Błąd z odpowiedzi authProvider - używamy type guard
-    if (registerData && isErrorResponse(registerData)) {
-      return registerData.error.message;
-    }
+    setIsLoading(true);
+    setError(null);
 
-    return null;
-  }, [hookError, registerData, hasAttempted]);
+    try {
+      const result = await authProvider.register({
+        email: processData.email,
+        password: processData.password,
+        role: processData.role,
+        ...(processData.operator_id && { operator_id: processData.operator_id })
+      });
 
-  // Type guard dla sprawdzenia typu odpowiedzi
-  const isErrorResponse = (data: any): data is RegisterErrorResponse => {
-    return data && data.success === false && data.error;
-  };
+      console.log("Registration result:", result);
 
-  const isSuccessResponse = (data: any): data is RegisterSuccessResponse => {
-    return data && data.success === true && data.user && data.session;
-  };
-
-  // Sprawdzenie sukcesu z type guard
-  const isRegistrationSuccessful = React.useMemo(() => {
-    return registerData && isSuccessResponse(registerData);
-  }, [registerData]);
-
-  // Przekierowanie po sukcesie
-  React.useEffect(() => {
-    if (
-      isRegistrationSuccessful &&
-      registerData &&
-      isSuccessResponse(registerData)
-    ) {
-      if (!processData.registrationComplete) {
+      if (result.success) {
+        setIsSuccess(true);
+        
+        // Zapisz dane o udanej rejestracji
         setData("registration", {
           ...processData,
           registrationComplete: true,
           registrationDate: new Date().toISOString(),
-          user: registerData.user,
-          session: registerData.session,
-          successData: registerData,
+          user: result.user
         });
+
+        // Przekieruj po 1.5 sekundy
+        setTimeout(() => {
+          navigate("/register/step4");
+        }, 1500);
+      } else {
+        setError(result.error?.message || "Rejestracja nie powiodła się");
       }
-
-      const timer = setTimeout(() => {
-        navigate("/register/step4");
-      }, 1500);
-
-      return () => clearTimeout(timer);
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError("Wystąpił nieoczekiwany błąd");
+    } finally {
+      setIsLoading(false);
     }
-  }, [isRegistrationSuccessful, registerData, navigate, processData, setData]);
-
-  // Funkcja rejestracji
-  const register = React.useCallback(() => {
-    setHasAttempted(true);
-
-    const registerVariables: RegisterVariables = {
-      email: processData.email,
-      password: processData.password,
-      role: processData.role,
-    };
-
-    // Dodaj operator_id jeśli istnieje
-    if (processData.operator_id) {
-      registerVariables.operator_id = processData.operator_id;
-    }
-
-    registerMutation(registerVariables);
-  }, [processData, registerMutation]);
+  }, [processData, setData, navigate]);
 
   // Funkcja cofania
   const goBack = React.useCallback(() => {
@@ -133,8 +76,8 @@ export const useRegistration = (): UseRegistrationResult => {
 
   return {
     isLoading,
-    isSuccess: isRegistrationSuccessful ?? false,
-    error: registrationError,
+    isSuccess,
+    error,
     register,
     goBack,
     processData,

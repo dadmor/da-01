@@ -1,4 +1,4 @@
-// pages/auth/RegisterStep1.tsx
+// RegisterStep1.tsx - POPRAWIONA WERSJA
 import { NarrowCol } from "@/components/layout/NarrowCol";
 import { Lead } from "@/components/reader";
 import { SchemaForm } from "@/components/SchemaForm";
@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 
 export const RegisterStep1: React.FC = () => {
   const navigate = useNavigate();
-  const { register, setData } = useFormSchemaStore(); // ✅ Dodano setData
+  const { register } = useFormSchemaStore();
 
   useEffect(() => {
     register({
@@ -33,12 +33,12 @@ export const RegisterStep1: React.FC = () => {
               options: [
                 {
                   value: "beneficiary",
-                  label: "Beneficjent - zakładajacy zlecenie",
+                  label: "Beneficjent - zakładający zlecenie",
                 },
-                { value: "auditor", label: "Auditor - opiniujacy zlecenie" },
+                { value: "auditor", label: "Auditor - opiniujący zlecenie" },
                 {
                   value: "contractor",
-                  label: "Wykonawca - realizujacy zlecenie",
+                  label: "Wykonawca - realizujący zlecenie",
                 },
               ],
             },
@@ -79,9 +79,8 @@ export const RegisterStep1: React.FC = () => {
   }, [register]);
 
   const handleSubmit = (data: any) => {
-    console.log("RegisterStep1 - Zapisuję dane:", data);
-    // ✅ ZAPISZ DANE DO STORE'A
-    setData("registration", data);
+    console.log("RegisterStep1 - Otrzymane dane z formularza:", data);
+    // NIE NADPISUJ - dane są już zapisane przez SchemaForm
     navigate("/register/step2");
   };
 

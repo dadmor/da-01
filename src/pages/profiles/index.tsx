@@ -1,5 +1,5 @@
 // src/pages/profiles/index.tsx
-import { Route } from "react-router";
+import { Route, Navigate } from "react-router-dom";
 import { ProfilesMain } from "./main";
 import { ProfilesCreate } from "./create";
 import { ProfilesEdit } from "./edit";
@@ -9,10 +9,10 @@ export { ProfilesMain } from "./main";
 export { ProfilesCreate } from "./create";
 export { ProfilesEdit } from "./edit";
 
-// Resource definition - BEZ ID, bo to profil zalogowanego użytkownika
+// Resource definition - główna ścieżka to /profiles/main
 export const profilesResource = {
   name: "profiles",
-  list: "/profiles",
+  list: "/profiles/main",
   create: "/profiles/create",
   edit: "/profiles/edit", // Bez :id
   meta: {
@@ -21,11 +21,16 @@ export const profilesResource = {
   },
 };
 
-// Routes - BEZ ID
+// Routes - z przekierowaniem z /profiles na /profiles/main
 export const profilesRoutes = [
   <Route
-    key="profiles-main"
+    key="profiles-redirect"
     path="/profiles"
+    element={<Navigate to="/profiles/main" replace />}
+  />,
+  <Route
+    key="profiles-main"
+    path="/profiles/main"
     element={<ProfilesMain />}
   />,
   <Route
