@@ -42,7 +42,7 @@ export const Menu: React.FC<MenuProps> = ({ onClose }) => {
       <div className="flex h-16 items-center justify-between border-b px-6">
         <div className="flex items-center">
           <MenuIcon className="h-6 w-6 mr-2" />
-          <span className="font-semibold">Logo.com</span>
+          <span className="font-semibold">Private Dancer</span>
         </div>
         {onClose && (
           <Button

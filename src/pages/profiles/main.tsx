@@ -60,9 +60,15 @@ interface SchoolProfile {
   created_at: string;
 }
 
+interface Identity {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export const ProfilesMain = () => {
   const navigate = useNavigate();
-  const { data: identity } = useGetIdentity();
+  const { data: identity } = useGetIdentity<Identity>();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [dancerProfile, setDancerProfile] = useState<DancerProfile | null>(null);
@@ -84,10 +90,13 @@ export const ProfilesMain = () => {
 
   useEffect(() => {
     fetchUserProfiles();
-    if (identity?.id) {
+  }, []);
+
+  useEffect(() => {
+    if (identity?.id && dancerProfile?.id) {
       fetchStatistics();
     }
-  }, [identity]);
+  }, [identity?.id, dancerProfile?.id]);
 
   const fetchUserProfiles = async () => {
     try {
@@ -317,66 +326,87 @@ export const ProfilesMain = () => {
         </Card>
       ) : (
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Quick Stats */}
+          {/* Quick Stats - poprawiony układ dla 3 i 4 kart */}
           {dancerProfile && (
-            <GridBox className="mb-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Heart className="w-5 h-5 text-pink-500" />
-                    <span className="font-medium">Polubienia</span>
+            <div className={`grid gap-4 ${isInstructor ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+              <Card className="overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Heart className="w-8 h-8 text-pink-500/20" />
+                      <div className="text-right">
+                        <p className="text-3xl font-bold tracking-tight">{stats.likesReceived}</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest">otrzymanych</p>
+                      </div>
+                    </div>
+                    <Separator className="my-3" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Wysłanych</span>
+                      <span className="font-medium">{stats.likesSent}</span>
+                    </div>
                   </div>
-                  <p className="text-2xl font-bold">{stats.likesReceived}</p>
-                  <p className="text-sm text-muted-foreground">otrzymanych</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {stats.likesSent} wysłanych
-                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    <span className="font-medium">Dopasowania</span>
+              <Card className="overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Users className="w-8 h-8 text-blue-500/20" />
+                      <div className="text-right">
+                        <p className="text-3xl font-bold tracking-tight">{stats.matches}</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest">dopasowań</p>
+                      </div>
+                    </div>
+                    <Separator className="my-3" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Wzajemnych</span>
+                      <span className="font-medium">100%</span>
+                    </div>
                   </div>
-                  <p className="text-2xl font-bold">{stats.matches}</p>
-                  <p className="text-sm text-muted-foreground">wzajemnych</p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Calendar className="w-5 h-5 text-green-500" />
-                    <span className="font-medium">Wydarzenia</span>
+              <Card className="overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Calendar className="w-8 h-8 text-green-500/20" />
+                      <div className="text-right">
+                        <p className="text-3xl font-bold tracking-tight">{stats.eventsAttended}</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest">wydarzeń</p>
+                      </div>
+                    </div>
+                    <Separator className="my-3" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Uczestnictwa</span>
+                      <span className="font-medium">{isInstructor ? stats.eventsCreated : '-'}</span>
+                    </div>
                   </div>
-                  <p className="text-2xl font-bold">{stats.eventsAttended}</p>
-                  <p className="text-sm text-muted-foreground">uczestnictwa</p>
-                  {isInstructor && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {stats.eventsCreated} utworzonych
-                    </p>
-                  )}
                 </CardContent>
               </Card>
 
               {isInstructor && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Trophy className="w-5 h-5 text-yellow-500" />
-                      <span className="font-medium">Uczniowie</span>
+                <Card className="overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Trophy className="w-8 h-8 text-yellow-500/20" />
+                        <div className="text-right">
+                          <p className="text-3xl font-bold tracking-tight">{stats.totalStudents}</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-widest">uczniów</p>
+                        </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Nadchodzące</span>
+                        <span className="font-medium">{stats.upcomingEvents}</span>
+                      </div>
                     </div>
-                    <p className="text-2xl font-bold">{stats.totalStudents}</p>
-                    <p className="text-sm text-muted-foreground">unikalnych</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {stats.upcomingEvents} nadchodzących zajęć
-                    </p>
                   </CardContent>
                 </Card>
               )}
-            </GridBox>
+            </div>
           )}
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dancer" | "school")}>
