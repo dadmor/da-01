@@ -10,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  ArrowLeft, 
-  Plus, 
-  X, 
+import {
+  ArrowLeft,
+  Plus,
+  X,
   Calendar,
   Clock,
   MapPin,
@@ -26,7 +26,7 @@ import {
   Trophy,
   TrendingUp,
   Info,
-  CheckCircle
+  CheckCircle,
 } from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
 import { Label } from "@/components/ui/label";
@@ -115,40 +115,44 @@ export const EventsCreate = () => {
   }, []);
 
   const eventCategories = [
-    { 
-      value: "lesson", 
+    {
+      value: "lesson",
       label: "Lekcja",
       icon: <Music className="w-4 h-4" />,
-      description: "Indywidualne lub grupowe zajęcia"
+      description: "Indywidualne lub grupowe zajęcia",
     },
-    { 
-      value: "workshop", 
+    {
+      value: "workshop",
       label: "Warsztaty",
       icon: <Star className="w-4 h-4" />,
-      description: "Intensywne szkolenie tematyczne"
+      description: "Intensywne szkolenie tematyczne",
     },
-    { 
-      value: "party", 
+    {
+      value: "party",
       label: "Impreza",
       icon: <Sparkles className="w-4 h-4" />,
-      description: "Potańcówka lub event towarzyski"
+      description: "Potańcówka lub event towarzyski",
     },
-    { 
-      value: "outdoor", 
+    {
+      value: "outdoor",
       label: "Plener",
       icon: <MapPin className="w-4 h-4" />,
-      description: "Taniec na świeżym powietrzu"
+      description: "Taniec na świeżym powietrzu",
     },
-    { 
-      value: "course", 
+    {
+      value: "course",
       label: "Kurs",
       icon: <TrendingUp className="w-4 h-4" />,
-      description: "Cykl zajęć z progresją"
+      description: "Cykl zajęć z progresją",
     },
   ];
 
   const addTag = () => {
-    if (currentTag.trim() && !tags.includes(currentTag.trim()) && tags.length < 5) {
+    if (
+      currentTag.trim() &&
+      !tags.includes(currentTag.trim()) &&
+      tags.length < 5
+    ) {
       setTags([...tags, currentTag.trim()]);
       setCurrentTag("");
     }
@@ -171,10 +175,16 @@ export const EventsCreate = () => {
         organizer_id: identity.id,
         ...data,
         tags: tags.length > 0 ? tags : null,
-        start_datetime: new Date(`${data.event_date}T${data.start_time}`).toISOString(),
-        end_datetime: new Date(`${data.event_date}T${data.end_time}`).toISOString(),
+        start_datetime: new Date(
+          `${data.event_date}T${data.start_time}`
+        ).toISOString(),
+        end_datetime: new Date(
+          `${data.event_date}T${data.end_time}`
+        ).toISOString(),
         price_amount: data.price_amount ? parseFloat(data.price_amount) : null,
-        max_participants: data.max_participants ? parseInt(data.max_participants) : null,
+        max_participants: data.max_participants
+          ? parseInt(data.max_participants)
+          : null,
         min_participants: 1,
         current_participants: 0,
         price_currency: "PLN",
@@ -198,7 +208,7 @@ export const EventsCreate = () => {
       toast.success("Sukces!", {
         description: "Wydarzenie zostało utworzone",
       });
-      
+
       list("events");
     } catch (error) {
       console.error("Błąd podczas tworzenia wydarzenia:", error);
@@ -216,13 +226,17 @@ export const EventsCreate = () => {
   ];
 
   const isStepValid = () => {
-    switch(currentStep) {
+    switch (currentStep) {
       case 1:
-        return watch("title") && watch("event_category") && watch("description");
+        return (
+          watch("title") && watch("event_category") && watch("description")
+        );
       case 2:
         return watch("event_date") && watch("start_time") && watch("end_time");
       case 3:
-        return locationType === "online" ? watch("online_platform") : (watch("address") && watch("city"));
+        return locationType === "online"
+          ? watch("online_platform")
+          : watch("address") && watch("city");
       case 4:
         return true;
       default:
@@ -234,18 +248,12 @@ export const EventsCreate = () => {
     <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => list("events")}
-          >
+        <div className="max-w-3xl mx-auto px-4  flex items-center justify-between h-16">
+          <Button variant="ghost" size="sm" onClick={() => list("events")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Anuluj
           </Button>
-          
-          <h1 className="font-semibold">Nowe wydarzenie</h1>
-          
+          <h1 className="font-semibold text-xl">Nowe wydarzenie</h1>
           <div className="w-20" /> {/* Spacer for centering */}
         </div>
       </div>
@@ -258,34 +266,44 @@ export const EventsCreate = () => {
               <div key={step.number} className="flex items-center">
                 <button
                   type="button"
-                  onClick={() => currentStep > step.number && setCurrentStep(step.number)}
+                  onClick={() =>
+                    currentStep > step.number && setCurrentStep(step.number)
+                  }
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
-                    currentStep === step.number && "bg-purple-100 text-purple-700",
-                    currentStep > step.number && "text-green-600 cursor-pointer hover:bg-gray-100",
+                    currentStep === step.number &&
+                      "bg-purple-100 text-purple-700",
+                    currentStep > step.number &&
+                      "text-green-600 cursor-pointer hover:bg-gray-100",
                     currentStep < step.number && "text-gray-400"
                   )}
                   disabled={currentStep < step.number}
                 >
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all",
-                    currentStep === step.number && "bg-purple-600 text-white",
-                    currentStep > step.number && "bg-green-600 text-white",
-                    currentStep < step.number && "bg-gray-200"
-                  )}>
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all",
+                      currentStep === step.number && "bg-purple-600 text-white",
+                      currentStep > step.number && "bg-green-600 text-white",
+                      currentStep < step.number && "bg-gray-200"
+                    )}
+                  >
                     {currentStep > step.number ? (
                       <CheckCircle className="w-5 h-5" />
                     ) : (
                       step.number
                     )}
                   </div>
-                  <span className="hidden sm:inline font-medium">{step.title}</span>
+                  <span className="hidden sm:inline font-medium">
+                    {step.title}
+                  </span>
                 </button>
                 {index < steps.length - 1 && (
-                  <div className={cn(
-                    "w-12 h-0.5 mx-2",
-                    currentStep > step.number ? "bg-green-600" : "bg-gray-200"
-                  )} />
+                  <div
+                    className={cn(
+                      "w-12 h-0.5 mx-2",
+                      currentStep > step.number ? "bg-green-600" : "bg-gray-200"
+                    )}
+                  />
                 )}
               </div>
             ))}
@@ -293,7 +311,10 @@ export const EventsCreate = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="max-w-3xl mx-auto px-4 py-6">
+      <form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="max-w-3xl mx-auto px-4 py-6"
+      >
         {/* Step 1: Podstawy */}
         {currentStep === 1 && (
           <div className="space-y-6">
@@ -312,7 +333,9 @@ export const EventsCreate = () => {
                       <button
                         key={category.value}
                         type="button"
-                        onClick={() => setValue("event_category", category.value)}
+                        onClick={() =>
+                          setValue("event_category", category.value)
+                        }
                         className={cn(
                           "p-4 rounded-lg border-2 transition-all text-left",
                           eventCategory === category.value
@@ -321,17 +344,21 @@ export const EventsCreate = () => {
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <div className={cn(
-                            "p-1.5 rounded",
-                            eventCategory === category.value
-                              ? "bg-purple-600 text-white"
-                              : "bg-gray-100"
-                          )}>
+                          <div
+                            className={cn(
+                              "p-1.5 rounded",
+                              eventCategory === category.value
+                                ? "bg-purple-600 text-white"
+                                : "bg-gray-100"
+                            )}
+                          >
                             {category.icon}
                           </div>
                           <span className="font-medium">{category.label}</span>
                         </div>
-                        <p className="text-xs text-gray-600">{category.description}</p>
+                        <p className="text-xs text-gray-600">
+                          {category.description}
+                        </p>
                       </button>
                     ))}
                   </div>
@@ -355,7 +382,9 @@ export const EventsCreate = () => {
                     })}
                   />
                   {errors.title && (
-                    <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {String(errors.title.message)}
+                    </p>
                   )}
                 </div>
 
@@ -398,7 +427,9 @@ export const EventsCreate = () => {
                     })}
                   />
                   {errors.description && (
-                    <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {String(errors.description.message)}
+                    </p>
                   )}
                 </div>
 
@@ -462,14 +493,17 @@ export const EventsCreate = () => {
                     })}
                   />
                   {errors.event_date && (
-                    <p className="text-sm text-red-500 mt-1">{errors.event_date.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {String(errors.event_date.message)}
+                    </p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="start_time">
-                      Godzina rozpoczęcia <span className="text-red-500">*</span>
+                      Godzina rozpoczęcia{" "}
+                      <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="start_time"
@@ -480,13 +514,16 @@ export const EventsCreate = () => {
                       })}
                     />
                     {errors.start_time && (
-                      <p className="text-sm text-red-500 mt-1">{errors.start_time.message}</p>
+                      <p className="text-sm text-red-500 mt-1">
+                        {String(errors.start_time.message)}
+                      </p>
                     )}
                   </div>
 
                   <div>
                     <Label htmlFor="end_time">
-                      Godzina zakończenia <span className="text-red-500">*</span>
+                      Godzina zakończenia{" "}
+                      <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="end_time"
@@ -497,26 +534,32 @@ export const EventsCreate = () => {
                       })}
                     />
                     {errors.end_time && (
-                      <p className="text-sm text-red-500 mt-1">{errors.end_time.message}</p>
+                      <p className="text-sm text-red-500 mt-1">
+                        {String(errors.end_time.message)}
+                      </p>
                     )}
                   </div>
                 </div>
 
                 {/* Quick time suggestions */}
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">Popularne godziny:</p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Popularne godziny:
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {["18:00", "19:00", "20:00", "10:00", "11:00"].map((time) => (
-                      <Button
-                        key={time}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setValue("start_time", time)}
-                      >
-                        {time}
-                      </Button>
-                    ))}
+                    {["18:00", "19:00", "20:00", "10:00", "11:00"].map(
+                      (time) => (
+                        <Button
+                          key={time}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setValue("start_time", time)}
+                        >
+                          {time}
+                        </Button>
+                      )
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -541,23 +584,38 @@ export const EventsCreate = () => {
                   >
                     <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
                       <RadioGroupItem value="address" id="address" />
-                      <Label htmlFor="address" className="flex-1 cursor-pointer">
+                      <Label
+                        htmlFor="address"
+                        className="flex-1 cursor-pointer"
+                      >
                         <span className="font-medium">Konkretny adres</span>
-                        <p className="text-sm text-gray-600">Studio, sala, klub</p>
+                        <p className="text-sm text-gray-600">
+                          Studio, sala, klub
+                        </p>
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
                       <RadioGroupItem value="online" id="online" />
                       <Label htmlFor="online" className="flex-1 cursor-pointer">
                         <span className="font-medium">Online</span>
-                        <p className="text-sm text-gray-600">Zoom, Google Meet, itp.</p>
+                        <p className="text-sm text-gray-600">
+                          Zoom, Google Meet, itp.
+                        </p>
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                      <RadioGroupItem value="client_location" id="client_location" />
-                      <Label htmlFor="client_location" className="flex-1 cursor-pointer">
+                      <RadioGroupItem
+                        value="client_location"
+                        id="client_location"
+                      />
+                      <Label
+                        htmlFor="client_location"
+                        className="flex-1 cursor-pointer"
+                      >
                         <span className="font-medium">U klienta</span>
-                        <p className="text-sm text-gray-600">Dojazd do uczestnika</p>
+                        <p className="text-sm text-gray-600">
+                          Dojazd do uczestnika
+                        </p>
                       </Label>
                     </div>
                   </RadioGroup>
@@ -570,7 +628,9 @@ export const EventsCreate = () => {
                     </Label>
                     <Select
                       value={watch("online_platform")}
-                      onValueChange={(value) => setValue("online_platform", value)}
+                      onValueChange={(value) =>
+                        setValue("online_platform", value)
+                      }
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Wybierz platformę" />
@@ -583,52 +643,64 @@ export const EventsCreate = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                ) : locationType === "address" && (
-                  <>
-                    <div>
-                      <Label htmlFor="location_name">Nazwa miejsca</Label>
-                      <Input
-                        id="location_name"
-                        placeholder="np. Studio Tańca Salsa"
-                        className="mt-1"
-                        {...register("location_name")}
-                      />
-                    </div>
+                ) : (
+                  locationType === "address" && (
+                    <>
+                      <div>
+                        <Label htmlFor="location_name">Nazwa miejsca</Label>
+                        <Input
+                          id="location_name"
+                          placeholder="np. Studio Tańca Salsa"
+                          className="mt-1"
+                          {...register("location_name")}
+                        />
+                      </div>
 
-                    <div>
-                      <Label htmlFor="address">
-                        Adres <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="address"
-                        placeholder="ul. Taneczna 10"
-                        className="mt-1"
-                        {...register("address", {
-                          required: locationType === "address" ? "Adres jest wymagany" : false,
-                        })}
-                      />
-                      {errors.address && (
-                        <p className="text-sm text-red-500 mt-1">{errors.address.message}</p>
-                      )}
-                    </div>
+                      <div>
+                        <Label htmlFor="address">
+                          Adres <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="address"
+                          placeholder="ul. Taneczna 10"
+                          className="mt-1"
+                          {...register("address", {
+                            required:
+                              locationType === "address"
+                                ? "Adres jest wymagany"
+                                : false,
+                          })}
+                        />
+                        {errors.address && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {String(errors.address.message)}
+                          </p>
+                        )}
+                      </div>
 
-                    <div>
-                      <Label htmlFor="city">
-                        Miasto <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="city"
-                        placeholder="Warszawa"
-                        className="mt-1"
-                        {...register("city", {
-                          required: locationType === "address" ? "Miasto jest wymagane" : false,
-                        })}
-                      />
-                      {errors.city && (
-                        <p className="text-sm text-red-500 mt-1">{errors.city.message}</p>
-                      )}
-                    </div>
-                  </>
+                      <div>
+                        <Label htmlFor="city">
+                          Miasto <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="city"
+                          placeholder="Warszawa"
+                          className="mt-1"
+                          {...register("city", {
+                            required:
+                              locationType === "address"
+                                ? "Miasto jest wymagane"
+                                : false,
+                          })}
+                        />
+                        {errors.city && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {String(errors.city.message)}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )
                 )}
               </CardContent>
             </Card>
@@ -662,7 +734,9 @@ export const EventsCreate = () => {
 
                 {/* Participants */}
                 <div>
-                  <Label htmlFor="max_participants">Maksymalna liczba uczestników</Label>
+                  <Label htmlFor="max_participants">
+                    Maksymalna liczba uczestników
+                  </Label>
                   <Input
                     id="max_participants"
                     type="number"
@@ -675,19 +749,27 @@ export const EventsCreate = () => {
 
                 {/* Skill Level */}
                 <div>
-                  <Label htmlFor="skill_level_required">Poziom zaawansowania</Label>
+                  <Label htmlFor="skill_level_required">
+                    Poziom zaawansowania
+                  </Label>
                   <Select
                     value={watch("skill_level_required")}
-                    onValueChange={(value) => setValue("skill_level_required", value)}
+                    onValueChange={(value) =>
+                      setValue("skill_level_required", value)
+                    }
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Dla każdego" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="beginner">Początkujący</SelectItem>
-                      <SelectItem value="intermediate">Średniozaawansowany</SelectItem>
+                      <SelectItem value="intermediate">
+                        Średniozaawansowany
+                      </SelectItem>
                       <SelectItem value="advanced">Zaawansowany</SelectItem>
-                      <SelectItem value="professional">Profesjonalny</SelectItem>
+                      <SelectItem value="professional">
+                        Profesjonalny
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -695,7 +777,10 @@ export const EventsCreate = () => {
                 {/* Partner Required */}
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <Label htmlFor="requires_partner" className="text-base font-medium">
+                    <Label
+                      htmlFor="requires_partner"
+                      className="text-base font-medium"
+                    >
                       Wymagany partner
                     </Label>
                     <p className="text-sm text-gray-600">
@@ -705,7 +790,9 @@ export const EventsCreate = () => {
                   <Switch
                     id="requires_partner"
                     checked={watch("requires_partner")}
-                    onCheckedChange={(checked) => setValue("requires_partner", checked)}
+                    onCheckedChange={(checked) =>
+                      setValue("requires_partner", checked)
+                    }
                   />
                 </div>
 
@@ -743,7 +830,10 @@ export const EventsCreate = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Data:</span>
                   <span className="font-medium">
-                    {watch("event_date") && format(new Date(watch("event_date")), "d MMMM yyyy", { locale: pl })}
+                    {watch("event_date") &&
+                      format(new Date(watch("event_date")), "d MMMM yyyy", {
+                        locale: pl,
+                      })}
                   </span>
                 </div>
                 <div className="flex justify-between">
