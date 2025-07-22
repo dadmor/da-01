@@ -1,5 +1,5 @@
 // ------ src/pages/profiles/show.tsx ------
-import { useGetIdentity, useOne } from "@refinedev/core";
+import { useGetIdentity } from "@refinedev/core";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,34 +17,127 @@ import {
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Badge, Button, Separator } from "@/components/ui";
-import { useLoading } from "@/utility";
 import { SubPage } from "@/components/layout";
+import { supabaseClient } from "@/utility/supabaseClient";
+import { useEffect, useState } from "react";
+
+interface UserRecord {
+  id: string;
+  email: string;
+  name: string;
+  bio?: string;
+  profile_photo_url?: string;
+  birth_date?: string;
+  height?: number;
+  location_lat?: number;
+  location_lng?: number;
+  city?: string;
+  search_radius_km?: number;
+  is_trainer?: boolean;
+  is_school_owner?: boolean;
+  is_verified?: boolean;
+  is_active?: boolean;
+  is_banned?: boolean;
+  show_age?: boolean;
+  show_exact_location?: boolean;
+  visibility?: string;
+  last_seen_at?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export const ProfileShow = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity, isLoading: isLoadingIdentity } = useGetIdentity<any>();
   const navigate = useNavigate();
+  const [userData, setUserData] = useState<UserRecord | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useOne({
-    resource: "users",
-    id: identity?.id || "",
-    queryOptions: {
-      enabled: !!identity?.id,
-    },
-  });
+  // Pobierz dane użytkownika
+  useEffect(() => {
+    if (identity?.id) {
+      setIsLoadingUser(true);
+      setError(null);
+      
+      supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', identity.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching user:', error);
+            setError('Nie udało się pobrać danych użytkownika');
+          } else if (data) {
+            setUserData(data);
+          }
+          setIsLoadingUser(false);
+        });
+    }
+  }, [identity?.id]);
 
-  const record = data?.data;
-  const init = useLoading({ isLoading, isError });
-  if (init) return init;
-
-  if (!record) {
+  // Obsługa stanów ładowania
+  if (isLoadingIdentity) {
     return (
-      <div className="p-6 mx-auto">
-        <div className="text-center py-12">
-          <p className="text-red-500 text-lg">Nie znaleziono profilu</p>
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Ładowanie danych użytkownika...</p>
+          </div>
         </div>
-      </div>
+      </SubPage>
     );
   }
+
+  if (!identity?.id) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">Nie można załadować danych użytkownika</p>
+            <p className="text-muted-foreground mt-2">Spróbuj odświeżyć stronę</p>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  if (isLoadingUser) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Ładowanie profilu...</p>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  if (error || !userData) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">{error || 'Nie znaleziono profilu'}</p>
+            <Button 
+              className="mt-4" 
+              onClick={() => window.location.reload()}
+            >
+              Odśwież stronę
+            </Button>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  // Oblicz wiek
+  const age = userData.birth_date 
+    ? new Date().getFullYear() - new Date(userData.birth_date).getFullYear()
+    : null;
 
   return (
     <SubPage>
@@ -70,47 +163,45 @@ export const ProfileShow = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium">Imię i nazwisko</p>
-                  <p className="text-lg">{record.name}</p>
+                  <p className="text-lg">{userData.name}</p>
                 </div>
 
                 <div>
                   <p className="text-sm font-medium">Email</p>
                   <p className="text-lg flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    {record.email}
+                    {userData.email}
                   </p>
                 </div>
 
-                {record.birth_date && (
+                {userData.birth_date && age && (
                   <div>
                     <p className="text-sm font-medium">Wiek</p>
                     <p className="text-lg flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      {new Date().getFullYear() -
-                        new Date(record.birth_date).getFullYear()}{" "}
-                      lat
+                      {age} lat
                     </p>
                   </div>
                 )}
 
-                {record.height && (
+                {userData.height && (
                   <div>
                     <p className="text-sm font-medium">Wzrost</p>
                     <p className="text-lg flex items-center gap-2">
                       <Ruler className="w-4 h-4" />
-                      {record.height} cm
+                      {userData.height} cm
                     </p>
                   </div>
                 )}
               </div>
 
-              {record.bio && (
+              {userData.bio && (
                 <>
                   <Separator />
                   <div>
                     <p className="text-sm font-medium mb-2">O mnie</p>
                     <p className="text-muted-foreground whitespace-pre-wrap">
-                      {record.bio}
+                      {userData.bio}
                     </p>
                   </div>
                 </>
@@ -119,19 +210,19 @@ export const ProfileShow = () => {
               <Separator />
 
               <div className="flex flex-wrap gap-2">
-                {record.is_trainer && (
+                {userData.is_trainer && (
                   <Badge variant="secondary">
                     <Award className="w-3 h-3 mr-1" />
                     Trener
                   </Badge>
                 )}
-                {record.is_school_owner && (
+                {userData.is_school_owner && (
                   <Badge variant="secondary">
                     <Award className="w-3 h-3 mr-1" />
                     Właściciel szkoły
                   </Badge>
                 )}
-                {record.is_verified && (
+                {userData.is_verified && (
                   <Badge variant="default">
                     <Shield className="w-3 h-3 mr-1" />
                     Zweryfikowany
@@ -149,15 +240,15 @@ export const ProfileShow = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {record.city && (
+              {userData.city && (
                 <div>
                   <p className="text-sm font-medium">Miasto</p>
-                  <p className="text-lg">{record.city}</p>
+                  <p className="text-lg">{userData.city}</p>
                 </div>
               )}
               <div>
                 <p className="text-sm font-medium">Promień wyszukiwania</p>
-                <p className="text-lg">{record.search_radius_km} km</p>
+                <p className="text-lg">{userData.search_radius_km || 50} km</p>
               </div>
             </CardContent>
           </Card>
@@ -173,9 +264,9 @@ export const ProfileShow = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm">Widoczność profilu</span>
                 <Badge variant="outline" className="capitalize">
-                  {record.visibility === "public"
+                  {userData.visibility === "public"
                     ? "Publiczny"
-                    : record.visibility === "friends"
+                    : userData.visibility === "friends"
                     ? "Znajomi"
                     : "Prywatny"}
                 </Badge>
@@ -185,7 +276,7 @@ export const ProfileShow = () => {
 
               <div className="flex items-center justify-between">
                 <span className="text-sm flex items-center gap-2">
-                  {record.show_age ? (
+                  {userData.show_age ? (
                     <Eye className="w-3 h-3" />
                   ) : (
                     <EyeOff className="w-3 h-3" />
@@ -193,13 +284,13 @@ export const ProfileShow = () => {
                   Pokazuj wiek
                 </span>
                 <span className="text-sm font-medium">
-                  {record.show_age ? "Tak" : "Nie"}
+                  {userData.show_age ? "Tak" : "Nie"}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-sm flex items-center gap-2">
-                  {record.show_exact_location ? (
+                  {userData.show_exact_location ? (
                     <Eye className="w-3 h-3" />
                   ) : (
                     <EyeOff className="w-3 h-3" />
@@ -207,7 +298,7 @@ export const ProfileShow = () => {
                   Dokładna lokalizacja
                 </span>
                 <span className="text-sm font-medium">
-                  {record.show_exact_location ? "Tak" : "Nie"}
+                  {userData.show_exact_location ? "Tak" : "Nie"}
                 </span>
               </div>
             </CardContent>
@@ -220,8 +311,8 @@ export const ProfileShow = () => {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Status</span>
-                <Badge variant={record.is_active ? "default" : "secondary"}>
-                  {record.is_active ? "Aktywny" : "Nieaktywny"}
+                <Badge variant={userData.is_active ? "default" : "secondary"}>
+                  {userData.is_active ? "Aktywny" : "Nieaktywny"}
                 </Badge>
               </div>
 
@@ -230,11 +321,11 @@ export const ProfileShow = () => {
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>
                   Utworzono:{" "}
-                  {new Date(record.created_at).toLocaleDateString("pl-PL")}
+                  {new Date(userData.created_at).toLocaleDateString("pl-PL")}
                 </p>
                 <p>
                   Ostatnia aktualizacja:{" "}
-                  {new Date(record.updated_at).toLocaleDateString("pl-PL")}
+                  {new Date(userData.updated_at).toLocaleDateString("pl-PL")}
                 </p>
               </div>
             </CardContent>

@@ -1,6 +1,6 @@
 // ------ src/pages/profiles/edit.tsx ------
 import { useForm } from "@refinedev/react-hook-form";
-import { useGetIdentity, useOne } from "@refinedev/core";
+import { useGetIdentity, useUpdate } from "@refinedev/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -10,58 +10,158 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User, MapPin } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button, Input, Textarea, Switch } from "@/components/ui";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
-import { useLoading } from "@/utility";
 import { SubPage } from "@/components/layout";
+import { supabaseClient } from "@/utility/supabaseClient";
+
+interface UserRecord {
+  id: string;
+  email: string;
+  name: string;
+  bio?: string;
+  profile_photo_url?: string;
+  birth_date?: string;
+  height?: number;
+  location_lat?: number;
+  location_lng?: number;
+  city?: string;
+  search_radius_km?: number;
+  is_trainer?: boolean;
+  is_school_owner?: boolean;
+  is_verified?: boolean;
+  is_active?: boolean;
+  is_banned?: boolean;
+  show_age?: boolean;
+  show_exact_location?: boolean;
+  visibility?: string;
+  last_seen_at?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export const ProfileEdit = () => {
-  const { data: identity } = useGetIdentity();
+  const { data: identity, isLoading: isLoadingIdentity } = useGetIdentity<any>();
+  const [userData, setUserData] = useState<UserRecord | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { mutate: updateUser } = useUpdate();
 
   const {
-    refineCore: { onFinish },
     register,
     handleSubmit,
     setValue,
     watch,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resource: "users",
-    id: identity?.id,
-    action: "edit",
-    queryOptions: {
-      enabled: !!identity?.id,
-    },
-    refineCoreProps: {
-      queryOptions: {
-        enabled: !!identity?.id,
-      },
-    },
-  });
+  } = useForm();
 
-  const { data, isLoading, isError } = useOne({
-    resource: "users", 
-    id: identity?.id || "",
-    queryOptions: {
-      enabled: !!identity?.id,
-    },
-  });
-
-  const record = data?.data;
-  const init = useLoading({ isLoading, isError });
-
+  // Pobierz dane użytkownika
   useEffect(() => {
-    if (record) {
-      reset(record);
+    if (identity?.id) {
+      setIsLoadingUser(true);
+      setError(null);
+      
+      supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', identity.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching user:', error);
+            setError('Nie udało się pobrać danych użytkownika');
+          } else if (data) {
+            setUserData(data);
+            reset(data);
+          }
+          setIsLoadingUser(false);
+        });
     }
-  }, [record, reset]);
+  }, [identity?.id, reset]);
 
-  if (!identity?.id) return <div>Ładowanie danych użytkownika...</div>;
-  if (init) return init;
+  const onFinish = (values: any) => {
+    if (!identity?.id) return;
+
+    updateUser(
+      {
+        resource: "users",
+        id: identity.id,
+        values,
+      },
+      {
+        onSuccess: () => {
+          // Możesz dodać toast lub przekierowanie
+          console.log("Profil zaktualizowany pomyślnie");
+        },
+        onError: (error) => {
+          console.error("Błąd aktualizacji profilu:", error);
+        },
+      }
+    );
+  };
+
+  // Obsługa stanów ładowania
+  if (isLoadingIdentity) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Ładowanie danych użytkownika...</p>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  if (!identity?.id) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">Nie można załadować danych użytkownika</p>
+            <p className="text-muted-foreground mt-2">Spróbuj odświeżyć stronę</p>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  if (isLoadingUser) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Ładowanie profilu...</p>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
+
+  if (error) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">{error}</p>
+            <Button 
+              className="mt-4" 
+              onClick={() => window.location.reload()}
+            >
+              Odśwież stronę
+            </Button>
+          </div>
+        </div>
+      </SubPage>
+    );
+  }
 
   return (
     <SubPage>
@@ -139,6 +239,7 @@ export const ProfileEdit = () => {
                     {...register("height", {
                       min: { value: 100, message: "Minimalny wzrost to 100cm" },
                       max: { value: 250, message: "Maksymalny wzrost to 250cm" },
+                      valueAsNumber: true,
                     })}
                   />
                 </FormControl>
@@ -166,7 +267,7 @@ export const ProfileEdit = () => {
                 <FormControl label="Jestem trenerem">
                   <FlexBox variant="start">
                     <Switch
-                      checked={watch("is_trainer")}
+                      checked={watch("is_trainer") || false}
                       onCheckedChange={(checked) => setValue("is_trainer", checked)}
                     />
                     <span className="text-sm text-muted-foreground">
@@ -178,7 +279,7 @@ export const ProfileEdit = () => {
                 <FormControl label="Posiadam szkołę tańca">
                   <FlexBox variant="start">
                     <Switch
-                      checked={watch("is_school_owner")}
+                      checked={watch("is_school_owner") || false}
                       onCheckedChange={(checked) => setValue("is_school_owner", checked)}
                     />
                     <span className="text-sm text-muted-foreground">
@@ -222,9 +323,11 @@ export const ProfileEdit = () => {
                     type="number"
                     min="5"
                     max="200"
+                    defaultValue={50}
                     {...register("search_radius_km", {
                       min: { value: 5, message: "Minimum 5km" },
                       max: { value: 200, message: "Maksimum 200km" },
+                      valueAsNumber: true,
                     })}
                   />
                 </FormControl>
@@ -234,7 +337,7 @@ export const ProfileEdit = () => {
                   error={errors.visibility?.message as string}
                 >
                   <Select
-                    value={watch("visibility")}
+                    value={watch("visibility") || "public"}
                     onValueChange={(value) => setValue("visibility", value)}
                   >
                     <SelectTrigger>
@@ -253,7 +356,7 @@ export const ProfileEdit = () => {
                 <FormControl label="Pokaż wiek">
                   <FlexBox variant="start">
                     <Switch
-                      checked={watch("show_age")}
+                      checked={watch("show_age") !== false}
                       onCheckedChange={(checked) => setValue("show_age", checked)}
                     />
                     <span className="text-sm text-muted-foreground">
@@ -265,7 +368,7 @@ export const ProfileEdit = () => {
                 <FormControl label="Pokaż dokładną lokalizację">
                   <FlexBox variant="start">
                     <Switch
-                      checked={watch("show_exact_location")}
+                      checked={watch("show_exact_location") || false}
                       onCheckedChange={(checked) => setValue("show_exact_location", checked)}
                     />
                     <span className="text-sm text-muted-foreground">
