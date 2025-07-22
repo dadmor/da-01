@@ -17,3 +17,5 @@ export * from "./table";
 export * from "./textarea";
 export * from "./tabs";
 
+export * from "./switch";
+export * from "./tooltip";

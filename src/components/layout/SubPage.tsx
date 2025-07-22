@@ -1,0 +1,10 @@
+// components/FlexBox.tsx
+import { ReactNode } from "react";
+
+interface NarrowColProps {
+  children: ReactNode;
+}
+
+export const SubPage = ({ children }: NarrowColProps) => {
+  return <div className="p-12 space-y-6">{children}</div>;
+};

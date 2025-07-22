@@ -1,24 +1,23 @@
-// src/pages/dancers/index.tsx
+// ------ src/pages/dancers/index.tsx ------
 import { Route } from "react-router";
 import { DancersList } from "./list";
 import { DancersShow } from "./show";
 
-// Komponenty - BEZ CREATE I EDIT!
-export { DancersList };
-export { DancersShow };
+// Komponenty
+export { DancersList } from "./list";
+export { DancersShow } from "./show";
 
-// Resource definition - tylko lista i podgląd
+// Resource definition
 export const dancersResource = {
-  name: "dancers",
+  name: "v_public_dancers",
   list: "/dancers",
   show: "/dancers/show/:id",
   meta: {
-    canDelete: false,
     label: "Tancerze",
   },
 };
 
-// Routes - tylko lista i show
+// Routes
 export const dancersRoutes = [
   <Route
     key="dancers-list"

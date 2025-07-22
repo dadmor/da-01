@@ -1,15 +1,13 @@
 import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Menu } from "../menu";
 import { Button } from "@/components/ui/button";
 import { Menu as MenuIcon } from "lucide-react";
 
 
+
 export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-
-  
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -17,8 +15,6 @@ export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
-     
-
       <div className="flex relative">
         {/* Mobile Overlay z delikatnym purpurowym zaciemnieniem */}
         {isMobileMenuOpen && (
@@ -64,3 +60,6 @@ export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
     </div>
   );
 };
+
+
+export * from "./SubPage";

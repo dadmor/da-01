@@ -1,45 +1,25 @@
-// src/pages/profiles/index.tsx
-import { Route, Navigate } from "react-router-dom";
-import { ProfilesMain } from "./main";
-import { ProfilesCreate } from "./create";
-import { ProfilesEdit } from "./edit";
+// ------ src/pages/profiles/index.tsx ------
+import { Route } from "react-router";
+import { ProfileEdit } from "./edit";
+import { ProfileShow } from "./show";
 
-// Components export
-export { ProfilesMain } from "./main";
-export { ProfilesCreate } from "./create";
-export { ProfilesEdit } from "./edit";
+// Komponenty
+export { ProfileEdit } from "./edit";
+export { ProfileShow } from "./show";
 
-// Resource definition - główna ścieżka to /profiles/main
+// Resource definition
 export const profilesResource = {
-  name: "profiles",
-  list: "/profiles/main",
-  create: "/profiles/create",
-  edit: "/profiles/edit", // Bez :id
+  name: "users",
+  list: "/profiles", // THIS IS REFINE DUMB MENU FIX
+  show: "/profiles/show",
+  edit: "/profiles/edit",
   meta: {
     label: "Mój Profil",
   },
 };
 
-// Routes - z przekierowaniem z /profiles na /profiles/main
+// Routes
 export const profilesRoutes = [
-  <Route
-    key="profiles-redirect"
-    path="/profiles"
-    element={<Navigate to="/profiles/main" replace />}
-  />,
-  <Route
-    key="profiles-main"
-    path="/profiles/main"
-    element={<ProfilesMain />}
-  />,
-  <Route
-    key="profiles-create"
-    path="/profiles/create"
-    element={<ProfilesCreate />}
-  />,
-  <Route
-    key="profiles-edit"
-    path="/profiles/edit"
-    element={<ProfilesEdit />}
-  />,
+  <Route key="profiles-show" path="/profiles/show" element={<ProfileShow />} />,
+  <Route key="profiles-edit" path="/profiles/edit" element={<ProfileEdit />} />,
 ];

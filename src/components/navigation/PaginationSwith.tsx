@@ -1,4 +1,4 @@
-// src/components/navigation/PaginationSwitch.tsx
+// src/components/navigation/PaginationSwith.tsx
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -10,7 +10,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FlexBox } from "@/components/shared";
 
-interface PaginationSwitchProps {
+interface PaginationSwithProps {
   current: number;
   pageSize: number;
   total: number;
@@ -20,7 +20,7 @@ interface PaginationSwitchProps {
   pageSizeOptions?: number[];
 }
 
-export const PaginationSwitch = ({
+export const PaginationSwith = ({
   current,
   pageSize,
   total,
@@ -28,7 +28,7 @@ export const PaginationSwitch = ({
   setPageSize,
   itemName = "elementów",
   pageSizeOptions = [10, 20, 50],
-}: PaginationSwitchProps) => {
+}: PaginationSwithProps) => {
   const totalPages = Math.ceil(total / pageSize);
   const startItem = (current - 1) * pageSize + 1;
   const endItem = Math.min(current * pageSize, total);

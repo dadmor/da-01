@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Eye, Edit, MapPin, Users, Star, Plus } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
-import { PaginationSwitch } from "@/components/navigation";
+import { PaginationSwith } from "@/components/navigation";
 import { Lead } from "@/components/reader";
 import { useLoading } from "@/utility";
 import { Badge, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
@@ -174,7 +174,7 @@ export const DanceSchoolsList = () => {
         ))}
       </GridBox>
 
-      <PaginationSwitch
+      <PaginationSwith
         current={current}
         pageSize={pageSize}
         total={data?.total || 0}

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Music, Plus, Users } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
-import { PaginationSwitch } from "@/components/navigation";
+import { PaginationSwith } from "@/components/navigation";
 import { Lead } from "@/components/reader";
 import { useLoading } from "@/utility";
 import { Badge, Button, Input } from "@/components/ui";
@@ -91,7 +91,7 @@ export const DanceStylesList = () => {
         ))}
       </GridBox>
 
-      <PaginationSwitch
+      <PaginationSwith
         current={current}
         pageSize={pageSize}
         total={data?.total || 0}
