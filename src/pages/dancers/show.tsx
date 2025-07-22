@@ -1,6 +1,5 @@
 // src/pages/dancers/show.tsx
 import { useShow, useNavigation, useGetIdentity, useList } from "@refinedev/core";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowLeft,
@@ -14,10 +13,20 @@ import {
   EyeOff,
   Star,
   Users,
-  DollarSign
+  DollarSign,
+  Heart,
+  Share2,
+  Clock,
+  Award,
+  Sparkles,
+  Instagram,
+  Facebook,
+  Mail,
+  Phone,
+  Globe,
+  CheckCircle,
+  Activity
 } from "lucide-react";
-import { FlexBox, GridBox } from "@/components/shared";
-import { Lead } from "@/components/reader";
 import { Badge, Button, Separator } from "@/components/ui";
 import { useLoading } from "@/utility";
 import { DancerLikeButton } from "./DancerLikeButton";
@@ -26,6 +35,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dancer, UserIdentity } from "./dancers";
 import { Event } from "../events/events";
+import { cn } from "@/utility";
 
 interface InstructorStats {
   totalEvents: number;
@@ -36,7 +46,8 @@ interface InstructorStats {
 
 export const DancersShow = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
-  const [showContactOptions, setShowContactOptions] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [instructorStats, setInstructorStats] = useState<InstructorStats>({
     totalEvents: 0,
     upcomingEvents: 0,
@@ -53,7 +64,8 @@ export const DancersShow = () => {
           is_teaching,
           dance_styles(name, category)
         ),
-        users!dancers_user_id_fkey(id, email)`
+        users!dancers_user_id_fkey(id, email),
+        dancer_photos(photo_url, thumbnail_url, caption, order_index)`
     }
   });
   
@@ -86,7 +98,7 @@ export const DancersShow = () => {
       select: '*, dance_styles(name)',
     },
     pagination: {
-      pageSize: 5,
+      pageSize: 6,
     },
     sorters: [
       {
@@ -107,13 +119,11 @@ export const DancersShow = () => {
       try {
         const { supabaseClient } = await import("@/utility");
         
-        // Wszystkie wydarzenia
         const { count: totalEvents } = await supabaseClient
           .from('events')
           .select('*', { count: 'exact', head: true })
           .eq('organizer_id', record.users.id);
 
-        // Nadchodzące wydarzenia
         const { count: upcomingEvents } = await supabaseClient
           .from('events')
           .select('*', { count: 'exact', head: true })
@@ -121,7 +131,6 @@ export const DancersShow = () => {
           .gte('start_datetime', new Date().toISOString())
           .eq('status', 'active');
 
-        // Unikalni studenci
         const { data: participants } = await supabaseClient
           .from('event_participants')
           .select('participant_id')
@@ -130,7 +139,6 @@ export const DancersShow = () => {
 
         const uniqueStudents = new Set(participants?.map(p => p.participant_id) || []);
 
-        // Średnia cena
         const { data: prices } = await supabaseClient
           .from('events')
           .select('price_amount')
@@ -160,10 +168,17 @@ export const DancersShow = () => {
 
   if (!record) {
     return (
-      <div className="p-6 mx-auto">
-        <div className="text-center py-12">
-          <p className="text-red-500 text-lg">Profil nie znaleziony</p>
-          <Button className="mt-4" onClick={() => list("dancers")}>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+            <Users className="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Profil nie znaleziony</h3>
+          <p className="text-gray-500 mb-4">
+            Nie udało się znaleźć profilu tancerza
+          </p>
+          <Button onClick={() => list("dancers")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Powrót do listy
           </Button>
         </div>
@@ -191,6 +206,13 @@ export const DancersShow = () => {
   // Sprawdź czy to instruktor
   const isInstructor = danceStyles.some((s) => s.isTeaching);
 
+  // Zdjęcia
+  const photos = record.dancer_photos?.sort((a, b) => a.order_index - b.order_index) || [];
+  const allPhotos = [
+    { photo_url: record.profile_photo_url, caption: "Zdjęcie profilowe" },
+    ...photos
+  ].filter(p => p.photo_url);
+
   // Mapowanie poziomów
   const getSkillLevelLabel = (level: string) => {
     const levels: Record<string, string> = {
@@ -202,381 +224,385 @@ export const DancersShow = () => {
     return levels[level] || level;
   };
 
+  const getSkillLevelIcon = (level: string) => {
+    const icons: Record<string, JSX.Element> = {
+      beginner: <div className="w-2 h-2 bg-green-500 rounded-full" />,
+      intermediate: <div className="w-2 h-2 bg-blue-500 rounded-full" />,
+      advanced: <div className="w-2 h-2 bg-purple-500 rounded-full" />,
+      professional: <div className="w-2 h-2 bg-orange-500 rounded-full" />
+    };
+    return icons[level] || <div className="w-2 h-2 bg-gray-500 rounded-full" />;
+  };
+
   return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => list("dancers")}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Powrót do listy
-      </Button>
+    <div className="min-h-screen bg-white">
+      {/* Simplified Header */}
+      <div className="border-b bg-gray-50/50">
+        <div className="container mx-auto px-4 py-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => list("dancers")}
+            className="hover:bg-gray-100"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Powrót
+          </Button>
+        </div>
+      </div>
 
-      <FlexBox>
-        <Lead
-          title={record.name}
-          description={isInstructor ? "Instruktor tańca" : "Profil tancerza"}
-        />
-        {!isOwnProfile && (
-          <FlexBox className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowContactOptions(!showContactOptions)}
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Kontakt
-            </Button>
-            <DancerLikeButton targetDancerId={record.id} />
-          </FlexBox>
-        )}
-      </FlexBox>
-
-      {/* Contact Options */}
-      {showContactOptions && !isOwnProfile && (
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground mb-4">
-              Opcje kontaktu będą dostępne po wzajemnym dopasowaniu
-            </p>
-            <Button 
-              className="w-full" 
-              disabled
-            >
-              Czat dostępny po dopasowaniu
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <GridBox>
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Profile Photo and Basic Info */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                <Avatar className="w-32 h-32">
-                  <AvatarImage src={record.profile_photo_url} />
-                  <AvatarFallback className="text-4xl">{record.name?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <h2 className="text-2xl font-bold">
-                      {record.name}{record.show_age !== false && age ? `, ${age}` : ""}
-                    </h2>
-                    {record.show_exact_location !== false && (
-                      <p className="text-muted-foreground flex items-center gap-2 mt-1">
-                        <MapPin className="w-4 h-4" />
-                        {record.city || record.location_address || "Nieznane"}
-                      </p>
-                    )}
+      {/* Main Profile Section */}
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column - Photo Gallery */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-8">
+              {allPhotos.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Main Photo */}
+                  <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-gray-100">
+                    <img
+                      src={allPhotos[selectedImageIndex]?.photo_url}
+                      alt={record.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder-dancer.jpg";
+                      }}
+                    />
                   </div>
-                  <div className="flex items-center gap-4">
-                    {record.visibility && (
-                      <Badge variant={record.visibility === 'public' ? 'default' : 'secondary'}>
-                        {record.visibility === 'public' ? (
-                          <>
-                            <Eye className="w-3 h-3 mr-1" />
-                            Profil publiczny
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-3 h-3 mr-1" />
-                            Profil prywatny
-                          </>
-                        )}
-                      </Badge>
+                  
+                  {/* Thumbnails */}
+                  {allPhotos.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {allPhotos.map((photo, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedImageIndex(idx)}
+                          className={cn(
+                            "w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 transition-all",
+                            selectedImageIndex === idx 
+                              ? "ring-2 ring-purple-500 ring-offset-2" 
+                              : "opacity-70 hover:opacity-100"
+                          )}
+                        >
+                          <img
+                            src={photo.photo_url}
+                            alt={`Zdjęcie ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="aspect-[4/5] bg-gray-100 rounded-2xl flex items-center justify-center">
+                  <Avatar className="w-32 h-32">
+                    <AvatarFallback className="text-4xl bg-gray-200">
+                      {record.name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Info */}
+          <div className="lg:col-span-7 space-y-8">
+            {/* Header Info */}
+            <div>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                    {record.name}
+                  </h1>
+                  <div className="flex items-center gap-4 text-gray-600">
+                    {record.show_age !== false && age && (
+                      <span className="text-lg">{age} lat</span>
                     )}
-                    {isInstructor && (
-                      <Badge variant="default" className="bg-green-600">
-                        <Trophy className="w-3 h-3 mr-1" />
-                        Instruktor
-                      </Badge>
+                    {record.show_exact_location !== false && (
+                      <>
+                        <span className="text-gray-300">•</span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {record.city || record.location_address || "Nieznane"}
+                        </span>
+                      </>
                     )}
-                    {record.is_active === false && (
-                      <Badge variant="destructive">Nieaktywny</Badge>
+                    {record.search_radius_km && (
+                      <>
+                        <span className="text-gray-300">•</span>
+                        <span className="flex items-center gap-1">
+                          <Target className="w-4 h-4" />
+                          {record.search_radius_km} km
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
+                
+                {/* Status Badges */}
+                <div className="flex items-center gap-2">
+                  {isInstructor && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                      <Trophy className="w-4 h-4" />
+                      Instruktor
+                    </div>
+                  )}
+                  {record.is_active && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                      <Activity className="w-4 h-4" />
+                      Aktywny
+                    </div>
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Bio */}
-          {record.bio && (
-            <Card>
-              <CardHeader>
-                <CardTitle>O mnie</CardTitle>
-              </CardHeader>
-              <CardContent>
+              {/* Action Buttons */}
+              {!isOwnProfile && (
+                <div className="flex flex-wrap gap-3">
+                  <DancerLikeButton 
+                    targetDancerId={record.id}
+                    size="lg"
+                    className="shadow-sm"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => setShowContactModal(true)}
+                    className="shadow-sm"
+                  >
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                    Kontakt
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="lg"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Bio Section */}
+            {record.bio && (
+              <div className="prose prose-gray max-w-none">
+                <h3 className="text-xl font-semibold mb-3 text-gray-900">O mnie</h3>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {record.bio}
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
 
-          {/* Dance Styles */}
-          {danceStyles.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Music className="w-5 h-5" />
+            {/* Dance Styles */}
+            {danceStyles.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                  <Music className="w-5 h-5 text-purple-600" />
                   Style tańca
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h3>
                 <div className="space-y-3">
                   {danceStyles.map((style, index) => (
-                    <div key={index} className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Badge>{style.name}</Badge>
-                        {style.category && (
-                          <span className="text-xs text-muted-foreground">
-                            {style.category}
-                          </span>
-                        )}
-                        {style.isTeaching && (
-                          <Badge variant="outline" className="ml-auto">
-                            <Trophy className="w-3 h-3 mr-1" />
-                            Nauczam
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex gap-4 text-sm">
-                        <span className="text-muted-foreground">
-                          Poziom: <span className="font-medium text-foreground">
+                    <div 
+                      key={index} 
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {getSkillLevelIcon(style.level)}
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {style.name}
+                          </div>
+                          <div className="text-sm text-gray-600">
                             {getSkillLevelLabel(style.level)}
-                          </span>
-                        </span>
-                        {style.yearsExperience && style.yearsExperience > 0 && (
-                          <span className="text-muted-foreground">
-                            Doświadczenie: <span className="font-medium text-foreground">
-                              {style.yearsExperience} {style.yearsExperience === 1 ? 'rok' : style.yearsExperience < 5 ? 'lata' : 'lat'}
-                            </span>
-                          </span>
-                        )}
+                            {style.yearsExperience && style.yearsExperience > 0 && (
+                              <span className="ml-2">
+                                • {style.yearsExperience} {style.yearsExperience === 1 ? 'rok' : style.yearsExperience < 5 ? 'lata' : 'lat'} doświadczenia
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      {style.isTeaching && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 border-0">
+                          <Award className="w-3 h-3 mr-1" />
+                          Nauczam
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
 
-          {/* Upcoming Events - tylko dla instruktorów */}
-          {isInstructor && trainerEvents?.data && trainerEvents.data.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
+            {/* Instructor Stats */}
+            {isInstructor && (
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-purple-600" />
+                  Statystyki instruktora
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {instructorStats.totalEvents}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Wydarzenia</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-pink-600">
+                      {instructorStats.upcomingEvents}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Nadchodzące</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {instructorStats.totalStudents}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Uczniów</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-pink-600">
+                      {instructorStats.averagePrice} PLN
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Średnia cena</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming Events */}
+            {isInstructor && trainerEvents?.data && trainerEvents.data.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-purple-600" />
                   Nadchodzące zajęcia
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {trainerEvents.data.map((event) => (
-                    <div key={event.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {trainerEvents.data.slice(0, 4).map((event) => (
+                    <div 
+                      key={event.id} 
+                      className="group p-4 border border-gray-200 rounded-xl hover:shadow-md hover:border-purple-200 transition-all cursor-pointer bg-white"
+                      onClick={() => window.location.href = `/events/show/${event.id}`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-1">
+                            {event.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
                             {format(new Date(event.start_datetime), "EEEE, d MMMM", { locale: pl })}
                           </p>
                         </div>
-                        <Badge variant="outline">
+                        <span className="text-sm font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">
                           {format(new Date(event.start_datetime), "HH:mm")}
-                        </Badge>
+                        </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        {event.dance_styles && (
-                          <div className="flex items-center gap-1">
-                            <Music className="w-3 h-3" />
-                            <span>{event.dance_styles.name}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          <span>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3 text-gray-600">
+                          {event.dance_styles && (
+                            <span className="flex items-center gap-1">
+                              <Music className="w-3 h-3" />
+                              {event.dance_styles.name}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
                             {event.current_participants}
                             {event.max_participants && `/${event.max_participants}`}
                           </span>
                         </div>
                         {event.price_amount !== null && event.price_amount !== undefined && (
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            <span>
-                              {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
-                            </span>
-                          </div>
+                          <span className="font-semibold text-gray-900">
+                            {event.price_amount === 0 ? 'Bezpłatne' : `${event.price_amount} PLN`}
+                          </span>
                         )}
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="mt-2 w-full"
-                        onClick={() => window.location.href = `/events/show/${event.id}`}
-                      >
-                        Zobacz szczegóły
-                      </Button>
                     </div>
                   ))}
                 </div>
                 <Button 
-                  className="w-full mt-4" 
-                  variant="default"
+                  className="w-full" 
+                  variant="outline"
                   onClick={() => window.location.href = `/events?organizer=${record.users?.id}`}
                 >
-                  Zobacz wszystkie zajęcia
+                  Zobacz wszystkie zajęcia instruktora
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          {!isOwnProfile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Akcje</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <DancerLikeButton 
-                  targetDancerId={record.id} 
-                  className="w-full"
-                />
-                <Button 
-                  className="w-full" 
-                  variant="outline" 
-                  disabled
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Czat (po dopasowaniu)
-                </Button>
-                {isInstructor && (
-                  <Button 
-                    className="w-full" 
-                    variant="default"
-                    onClick={() => window.location.href = `/events?organizer=${record.users?.id}`}
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Zobacz zajęcia
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Instructor Stats - jeśli jest instruktorem */}
-          {isInstructor && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
-                  Statystyki instruktora
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Wydarzenia</span>
-                    <span className="font-medium">{instructorStats.totalEvents}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Nadchodzące</span>
-                    <span className="font-medium">{instructorStats.upcomingEvents}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Uczniów</span>
-                    <span className="font-medium">{instructorStats.totalStudents}</span>
-                  </div>
-                  {instructorStats.averagePrice > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Średnia cena</span>
-                      <span className="font-medium">{instructorStats.averagePrice} PLN</span>
-                    </div>
-                  )}
+            {/* Additional Info */}
+            <div className="flex flex-wrap gap-4 pt-6 border-t text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>Dołączył: {format(new Date(record.created_at), "MMMM yyyy", { locale: pl })}</span>
+              </div>
+              {record.users?.last_seen_at && (
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  <span>Ostatnio aktywny: {format(new Date(record.users.last_seen_at), "d MMMM", { locale: pl })}</span>
                 </div>
-                
-                {/* TODO: Oceny */}
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Star className="w-4 h-4" />
-                    <span>Oceny wkrótce dostępne</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Basic Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Informacje</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {record.search_radius_km && (
+              )}
+              <div className="flex items-center gap-2">
+                {record.visibility === 'public' ? (
                   <>
-                    <div className="flex items-center gap-3">
-                      <Target className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">Zasięg poszukiwań</p>
-                        <p className="text-sm text-muted-foreground">
-                          {record.search_radius_km} km
-                        </p>
-                      </div>
-                    </div>
-                    <Separator />
+                    <Eye className="w-4 h-4" />
+                    <span>Profil publiczny</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-4 h-4" />
+                    <span>Profil prywatny</span>
                   </>
                 )}
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Dołączył</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(record.created_at).toLocaleDateString("pl-PL", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Teaching Info - jeśli jest instruktorem */}
-          {isInstructor && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
-                  Prowadzę zajęcia
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 mb-4">
-                  {danceStyles
-                    .filter((s) => s.isTeaching)
-                    .map((style, idx) => (
-                      <Badge key={idx} variant="secondary">
-                        {style.name}
-                      </Badge>
-                    ))}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Kontakt przez system dopasowań lub bezpośrednio na zajęciach
-                </p>
-              </CardContent>
-            </Card>
-          )}
+            </div>
+          </div>
         </div>
-      </GridBox>
-    </>
+      </div>
+
+      {/* Contact Modal */}
+      {showContactModal && !isOwnProfile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowContactModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-full mb-4">
+                <Heart className="w-8 h-8 text-pink-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Opcje kontaktu</h3>
+              <p className="text-gray-600">
+                Pełne opcje kontaktu będą dostępne po wzajemnym dopasowaniu. 
+                Polub profil i czekaj na odpowiedź!
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <Button className="w-full" disabled variant="outline">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Czat (dostępny po dopasowaniu)
+              </Button>
+              <Button className="w-full" disabled variant="outline">
+                <Phone className="w-4 h-4 mr-2" />
+                Telefon (dostępny po dopasowaniu)
+              </Button>
+              <Button className="w-full" disabled variant="outline">
+                <Mail className="w-4 h-4 mr-2" />
+                Email (dostępny po dopasowaniu)
+              </Button>
+            </div>
+            
+            <Button 
+              className="w-full mt-6" 
+              variant="ghost"
+              onClick={() => setShowContactModal(false)}
+            >
+              Zamknij
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
