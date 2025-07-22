@@ -30,6 +30,43 @@ interface DanceStyle {
   category: string;
 }
 
+interface EventFormData {
+  title: string;
+  event_category: string;
+  event_format: string;
+  dance_style_id?: string;
+  description: string;
+  event_date: string;
+  start_time: string;
+  end_time: string;
+  is_recurring: boolean;
+  recurrence_rule?: string;
+  location_type: string;
+  online_platform?: string;
+  online_link?: string;
+  location_name?: string;
+  address?: string;
+  city?: string;
+  min_participants?: string;
+  max_participants?: string;
+  skill_level_required?: string;
+  age_min?: string;
+  age_max?: string;
+  requires_partner: boolean;
+  provides_partner: boolean;
+  price_amount?: string;
+  price_currency: string;
+  price_per?: string;
+  early_bird_discount?: string;
+  early_bird_deadline?: string;
+  cancellation_policy?: string;
+  visibility: string;
+  status: string;
+}
+
+
+
+
 const eventCategories = [
   { value: "lesson", label: "Lekcja indywidualna" },
   { value: "workshop", label: "Warsztaty" },
@@ -73,7 +110,7 @@ export const EventsCreate = () => {
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm({
+  } = useForm<EventFormData>({
     defaultValues: {
       event_category: "lesson",
       event_format: "individual",

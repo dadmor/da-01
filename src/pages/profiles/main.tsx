@@ -427,7 +427,7 @@ export const ProfilesMain = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="space-y-6">
           {/* Quick Stats - poprawiony układ dla 3 i 4 kart */}
           {dancerProfile && (
             <div className={`grid gap-4 ${isInstructor ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
