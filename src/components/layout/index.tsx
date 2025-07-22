@@ -3,23 +3,13 @@ import { useEffect, useState } from "react";
 import { Menu } from "../menu";
 import { Button } from "@/components/ui/button";
 import { Menu as MenuIcon } from "lucide-react";
-import { Breadcrumb } from "../navigation";
+
 
 export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [opacity, setOpacity] = useState(1);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const maxScroll = 250;
-      const newOpacity = Math.max(0, 1 - (scrollY / maxScroll) * 0.4);
-      setOpacity(newOpacity);
-    };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
