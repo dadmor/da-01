@@ -369,7 +369,7 @@ export const ProfilesMain = () => {
   const isInstructor = dancerProfile?.dance_styles?.some((ds: any) => ds.is_teaching);
 
   return (
-    <>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
       <FlexBox>
         <Lead
           title="Mój Profil"
@@ -898,6 +898,6 @@ export const ProfilesMain = () => {
           </Tabs>
         </div>
       )}
-    </>
+    </div>
   );
 };
