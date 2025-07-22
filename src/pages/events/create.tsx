@@ -10,15 +10,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Plus, 
+  X, 
+  Calendar,
+  Clock,
+  MapPin,
+  DollarSign,
+  Users,
+  Music,
+  Sparkles,
+  Star,
+  Heart,
+  Trophy,
+  TrendingUp,
+  Info,
+  CheckCircle
+} from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
-import { FlexBox } from "@/components/shared";
-import { Lead } from "@/components/reader";
-import { Form, FormActions, FormControl } from "@/components/form";
-import { supabaseClient } from "@/utility";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabaseClient } from "@/utility";
+import { cn } from "@/utility";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface UserIdentity {
   id: string;
@@ -39,70 +58,27 @@ interface EventFormData {
   event_date: string;
   start_time: string;
   end_time: string;
-  is_recurring: boolean;
-  recurrence_rule?: string;
   location_type: string;
   online_platform?: string;
   online_link?: string;
   location_name?: string;
   address?: string;
   city?: string;
-  min_participants?: string;
   max_participants?: string;
   skill_level_required?: string;
-  age_min?: string;
-  age_max?: string;
   requires_partner: boolean;
-  provides_partner: boolean;
   price_amount?: string;
-  price_currency: string;
-  price_per?: string;
-  early_bird_discount?: string;
-  early_bird_deadline?: string;
-  cancellation_policy?: string;
   visibility: string;
   status: string;
 }
-
-
-
-
-const eventCategories = [
-  { value: "lesson", label: "Lekcja indywidualna" },
-  { value: "workshop", label: "Warsztaty" },
-  { value: "outdoor", label: "Wydarzenie plenerowe" },
-  { value: "party", label: "Impreza taneczna" },
-  { value: "course", label: "Kurs" },
-];
-
-const eventFormats = [
-  { value: "individual", label: "Indywidualne" },
-  { value: "couple", label: "W parach" },
-  { value: "group", label: "Grupowe" },
-  { value: "open", label: "Otwarte" },
-];
-
-const locationTypes = [
-  { value: "address", label: "Adres" },
-  { value: "online", label: "Online" },
-  { value: "client_location", label: "U klienta" },
-];
-
-const skillLevels = [
-  { value: "beginner", label: "Początkujący" },
-  { value: "intermediate", label: "Średniozaawansowany" },
-  { value: "advanced", label: "Zaawansowany" },
-  { value: "professional", label: "Profesjonalny" },
-];
 
 export const EventsCreate = () => {
   const { list } = useNavigation();
   const { data: identity } = useGetIdentity<UserIdentity>();
   const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
+  const [currentStep, setCurrentStep] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
-  const [requirements, setRequirements] = useState<string[]>([]);
-  const [currentRequirement, setCurrentRequirement] = useState("");
 
   const {
     register,
@@ -117,16 +93,13 @@ export const EventsCreate = () => {
       location_type: "address",
       visibility: "public",
       status: "active",
-      price_currency: "PLN",
-      price_per: "person",
-      is_recurring: false,
       requires_partner: false,
-      provides_partner: false,
     },
   });
 
+  const eventCategory = watch("event_category");
   const locationType = watch("location_type");
-  const isRecurring = watch("is_recurring");
+  const priceAmount = watch("price_amount");
 
   useEffect(() => {
     const fetchDanceStyles = async () => {
@@ -134,17 +107,48 @@ export const EventsCreate = () => {
         .from("dance_styles")
         .select("id, name, category")
         .order("name");
-      if (error) {
-        alert("Błąd podczas pobierania stylów tańca");
-        return;
+      if (data) {
+        setDanceStyles(data);
       }
-      setDanceStyles(data || []);
     };
     fetchDanceStyles();
   }, []);
 
+  const eventCategories = [
+    { 
+      value: "lesson", 
+      label: "Lekcja",
+      icon: <Music className="w-4 h-4" />,
+      description: "Indywidualne lub grupowe zajęcia"
+    },
+    { 
+      value: "workshop", 
+      label: "Warsztaty",
+      icon: <Star className="w-4 h-4" />,
+      description: "Intensywne szkolenie tematyczne"
+    },
+    { 
+      value: "party", 
+      label: "Impreza",
+      icon: <Sparkles className="w-4 h-4" />,
+      description: "Potańcówka lub event towarzyski"
+    },
+    { 
+      value: "outdoor", 
+      label: "Plener",
+      icon: <MapPin className="w-4 h-4" />,
+      description: "Taniec na świeżym powietrzu"
+    },
+    { 
+      value: "course", 
+      label: "Kurs",
+      icon: <TrendingUp className="w-4 h-4" />,
+      description: "Cykl zajęć z progresją"
+    },
+  ];
+
   const addTag = () => {
-    if (currentTag.trim() && !tags.includes(currentTag.trim())) {
+    if (currentTag.trim() && !tags.includes(currentTag.trim()) && tags.length < 5) {
       setTags([...tags, currentTag.trim()]);
       setCurrentTag("");
     }
@@ -154,20 +158,11 @@ export const EventsCreate = () => {
     setTags(tags.filter((t) => t !== tag));
   };
 
-  const addRequirement = () => {
-    if (currentRequirement.trim() && !requirements.includes(currentRequirement.trim())) {
-      setRequirements([...requirements, currentRequirement.trim()]);
-      setCurrentRequirement("");
-    }
-  };
-
-  const removeRequirement = (req: string) => {
-    setRequirements(requirements.filter((r) => r !== req));
-  };
-
   const handleFormSubmit = async (data: any) => {
     if (!identity?.id) {
-      alert("Musisz być zalogowany, aby utworzyć wydarzenie");
+      toast.error("Błąd", {
+        description: "Musisz być zalogowany, aby utworzyć wydarzenie",
+      });
       return;
     }
 
@@ -176,16 +171,14 @@ export const EventsCreate = () => {
         organizer_id: identity.id,
         ...data,
         tags: tags.length > 0 ? tags : null,
-        requirements: requirements.length > 0 ? requirements : null,
         start_datetime: new Date(`${data.event_date}T${data.start_time}`).toISOString(),
         end_datetime: new Date(`${data.event_date}T${data.end_time}`).toISOString(),
         price_amount: data.price_amount ? parseFloat(data.price_amount) : null,
         max_participants: data.max_participants ? parseInt(data.max_participants) : null,
-        min_participants: data.min_participants ? parseInt(data.min_participants) : 1,
-        age_min: data.age_min ? parseInt(data.age_min) : null,
-        age_max: data.age_max ? parseInt(data.age_max) : null,
-        early_bird_discount: data.early_bird_discount ? parseFloat(data.early_bird_discount) : null,
+        min_participants: 1,
         current_participants: 0,
+        price_currency: "PLN",
+        price_per: "person",
       };
 
       delete eventData.event_date;
@@ -202,563 +195,603 @@ export const EventsCreate = () => {
         throw new Error(error.message);
       }
 
-      alert("Wydarzenie zostało utworzone!");
+      toast.success("Sukces!", {
+        description: "Wydarzenie zostało utworzone",
+      });
+      
       list("events");
     } catch (error) {
       console.error("Błąd podczas tworzenia wydarzenia:", error);
-      alert("Nie udało się utworzyć wydarzenia. Spróbuj ponownie.");
+      toast.error("Błąd", {
+        description: "Nie udało się utworzyć wydarzenia",
+      });
+    }
+  };
+
+  const steps = [
+    { number: 1, title: "Podstawy", icon: <Info className="w-4 h-4" /> },
+    { number: 2, title: "Termin", icon: <Calendar className="w-4 h-4" /> },
+    { number: 3, title: "Miejsce", icon: <MapPin className="w-4 h-4" /> },
+    { number: 4, title: "Szczegóły", icon: <Users className="w-4 h-4" /> },
+  ];
+
+  const isStepValid = () => {
+    switch(currentStep) {
+      case 1:
+        return watch("title") && watch("event_category") && watch("description");
+      case 2:
+        return watch("event_date") && watch("start_time") && watch("end_time");
+      case 3:
+        return locationType === "online" ? watch("online_platform") : (watch("address") && watch("city"));
+      case 4:
+        return true;
+      default:
+        return false;
     }
   };
 
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={() => list("events")}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Powrót do listy
-      </Button>
-
-      <FlexBox>
-        <Lead title="Utwórz wydarzenie" description="Dodaj nową lekcję, warsztaty lub wydarzenie taneczne" />
-      </FlexBox>
-
-      <Form onSubmit={handleSubmit(handleFormSubmit)}>
-        {/* Basic Information Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Informacje podstawowe</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl
-              label="Tytuł wydarzenia"
-              htmlFor="title"
-              error={errors.title?.message as string}
-              required
-            >
-              <Input
-                id="title"
-                placeholder="np. Lekcja salsy dla początkujących"
-                {...register("title", {
-                  required: "Tytuł jest wymagany",
-                  minLength: {
-                    value: 5,
-                    message: "Tytuł musi mieć minimum 5 znaków",
-                  },
-                })}
-              />
-            </FormControl>
-
-            <FormControl
-              label="Kategoria"
-              htmlFor="event_category"
-              error={errors.event_category?.message as string}
-              required
-            >
-              <Select
-                value={watch("event_category")}
-                onValueChange={(value) => setValue("event_category", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz kategorię" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eventCategories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            <FormControl
-              label="Format"
-              htmlFor="event_format"
-              error={errors.event_format?.message as string}
-              required
-            >
-              <Select
-                value={watch("event_format")}
-                onValueChange={(value) => setValue("event_format", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz format" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eventFormats.map((format) => (
-                    <SelectItem key={format.value} value={format.value}>
-                      {format.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            <FormControl
-              label="Styl tańca"
-              htmlFor="dance_style_id"
-              error={errors.dance_style_id?.message as string}
-            >
-              <Select
-                value={watch("dance_style_id")}
-                onValueChange={(value) => setValue("dance_style_id", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz styl tańca" />
-                </SelectTrigger>
-                <SelectContent>
-                  {danceStyles.map((style) => (
-                    <SelectItem key={style.id} value={style.id}>
-                      {style.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            <FormControl
-              label="Opis"
-              htmlFor="description"
-              error={errors.description?.message as string}
-              required
-            >
-              <Textarea
-                id="description"
-                placeholder="Opisz swoje wydarzenie..."
-                rows={4}
-                {...register("description", {
-                  required: "Opis jest wymagany",
-                  minLength: {
-                    value: 20,
-                    message: "Opis musi mieć minimum 20 znaków",
-                  },
-                })}
-              />
-            </FormControl>
-          </CardContent>
-        </Card>
-
-        {/* Date and Time Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Termin i czas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl
-              label="Data"
-              htmlFor="event_date"
-              error={errors.event_date?.message as string}
-              required
-            >
-              <Input
-                id="event_date"
-                type="date"
-                min={new Date().toISOString().split("T")[0]}
-                {...register("event_date", {
-                  required: "Data jest wymagana",
-                })}
-              />
-            </FormControl>
-
-            <FormControl
-              label="Godzina rozpoczęcia"
-              htmlFor="start_time"
-              error={errors.start_time?.message as string}
-              required
-            >
-              <Input
-                id="start_time"
-                type="time"
-                {...register("start_time", {
-                  required: "Godzina rozpoczęcia jest wymagana",
-                })}
-              />
-            </FormControl>
-
-            <FormControl
-              label="Godzina zakończenia"
-              htmlFor="end_time"
-              error={errors.end_time?.message as string}
-              required
-            >
-              <Input
-                id="end_time"
-                type="time"
-                {...register("end_time", {
-                  required: "Godzina zakończenia jest wymagana",
-                })}
-              />
-            </FormControl>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is_recurring"
-                checked={isRecurring}
-                onCheckedChange={(checked) => setValue("is_recurring", checked)}
-              />
-              <Label htmlFor="is_recurring">Wydarzenie cykliczne</Label>
-            </div>
-
-            {isRecurring && (
-              <FormControl label="Częstotliwość" htmlFor="recurrence_rule">
-                <Input
-                  id="recurrence_rule"
-                  placeholder="np. Co tydzień w poniedziałki"
-                  {...register("recurrence_rule")}
-                />
-              </FormControl>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Location Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Lokalizacja</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl
-              label="Typ lokalizacji"
-              htmlFor="location_type"
-              error={errors.location_type?.message as string}
-              required
-            >
-              <Select
-                value={locationType}
-                onValueChange={(value) => setValue("location_type", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz typ lokalizacji" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locationTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            {locationType === "online" && (
-              <>
-                <FormControl label="Platforma" htmlFor="online_platform">
-                  <Select
-                    value={watch("online_platform")}
-                    onValueChange={(value) => setValue("online_platform", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wybierz platformę" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zoom">Zoom</SelectItem>
-                      <SelectItem value="google_meet">Google Meet</SelectItem>
-                      <SelectItem value="skype">Skype</SelectItem>
-                      <SelectItem value="other">Inne</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-
-                <FormControl label="Link do spotkania" htmlFor="online_link">
-                  <Input
-                    id="online_link"
-                    type="url"
-                    placeholder="https://..."
-                    {...register("online_link")}
-                  />
-                </FormControl>
-              </>
-            )}
-
-            {locationType === "address" && (
-              <>
-                <FormControl label="Nazwa miejsca" htmlFor="location_name">
-                  <Input
-                    id="location_name"
-                    placeholder="np. Studio Tańca Salsa"
-                    {...register("location_name")}
-                  />
-                </FormControl>
-
-                <FormControl
-                  label="Adres"
-                  htmlFor="address"
-                  error={errors.address?.message as string}
-                  required
-                >
-                  <Input
-                    id="address"
-                    placeholder="ul. Przykładowa 1"
-                    {...register("address", {
-                      required: locationType === "address" ? "Adres jest wymagany" : false,
-                    })}
-                  />
-                </FormControl>
-
-                <FormControl
-                  label="Miasto"
-                  htmlFor="city"
-                  error={errors.city?.message as string}
-                  required
-                >
-                  <Input
-                    id="city"
-                    placeholder="Warszawa"
-                    {...register("city", {
-                      required: locationType === "address" ? "Miasto jest wymagane" : false,
-                    })}
-                  />
-                </FormControl>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Participants and Skill Level Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Uczestnicy i poziom</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl label="Min. uczestników" htmlFor="min_participants">
-              <Input
-                id="min_participants"
-                type="number"
-                min="1"
-                placeholder="1"
-                {...register("min_participants")}
-              />
-            </FormControl>
-
-            <FormControl label="Max. uczestników" htmlFor="max_participants">
-              <Input
-                id="max_participants"
-                type="number"
-                min="1"
-                placeholder="Bez limitu"
-                {...register("max_participants")}
-              />
-            </FormControl>
-
-            <FormControl label="Poziom" htmlFor="skill_level_required">
-              <Select
-                value={watch("skill_level_required")}
-                onValueChange={(value) => setValue("skill_level_required", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz poziom" />
-                </SelectTrigger>
-                <SelectContent>
-                  {skillLevels.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            <FormControl label="Wiek od" htmlFor="age_min">
-              <Input
-                id="age_min"
-                type="number"
-                min="1"
-                max="100"
-                {...register("age_min")}
-              />
-            </FormControl>
-
-            <FormControl label="Wiek do" htmlFor="age_max">
-              <Input
-                id="age_max"
-                type="number"
-                min="1"
-                max="100"
-                {...register("age_max")}
-              />
-            </FormControl>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="requires_partner"
-                checked={watch("requires_partner")}
-                onCheckedChange={(checked) => setValue("requires_partner", checked)}
-              />
-              <Label htmlFor="requires_partner">Wymagany partner</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="provides_partner"
-                checked={watch("provides_partner")}
-                onCheckedChange={(checked) => setValue("provides_partner", checked)}
-              />
-              <Label htmlFor="provides_partner">Zapewniam partnera</Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pricing Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Cennik</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl label="Cena" htmlFor="price_amount">
-              <Input
-                id="price_amount"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0"
-                {...register("price_amount")}
-              />
-            </FormControl>
-
-            <FormControl label="Za" htmlFor="price_per">
-              <Select
-                value={watch("price_per")}
-                onValueChange={(value) => setValue("price_per", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz typ ceny" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="person">Osobę</SelectItem>
-                  <SelectItem value="couple">Parę</SelectItem>
-                  <SelectItem value="hour">Godzinę</SelectItem>
-                  <SelectItem value="course">Cały kurs</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormControl>
-
-            <FormControl label="Polityka anulowania" htmlFor="cancellation_policy">
-              <Textarea
-                id="cancellation_policy"
-                placeholder="np. Bezpłatna anulacja do 24h przed wydarzeniem"
-                rows={2}
-                {...register("cancellation_policy")}
-              />
-            </FormControl>
-
-            <FormControl label="Zniżka Early Bird (%)" htmlFor="early_bird_discount">
-              <Input
-                id="early_bird_discount"
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                placeholder="np. 10"
-                {...register("early_bird_discount")}
-              />
-            </FormControl>
-
-            {watch("early_bird_discount") && (
-              <FormControl label="Data końca Early Bird" htmlFor="early_bird_deadline">
-                <Input
-                  id="early_bird_deadline"
-                  type="date"
-                  min={new Date().toISOString().split("T")[0]}
-                  {...register("early_bird_deadline")}
-                />
-              </FormControl>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Additional Information Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Dodatkowe informacje</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormControl label="Tagi">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="np. początkujący"
-                  value={currentTag}
-                  onChange={(e) => setCurrentTag(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" onClick={addTag}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {tags.map((tag, idx) => (
-                  <Badge key={idx} variant="outline">
-                    #{tag}
-                    <X
-                      className="w-3 h-3 ml-1 cursor-pointer"
-                      onClick={() => removeTag(tag)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            </FormControl>
-
-            <FormControl label="Wymagania">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="np. Wygodne buty"
-                  value={currentRequirement}
-                  onChange={(e) => setCurrentRequirement(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addRequirement();
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" onClick={addRequirement}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {requirements.map((req, idx) => (
-                  <Badge key={idx} variant="secondary">
-                    {req}
-                    <X
-                      className="w-3 h-3 ml-1 cursor-pointer"
-                      onClick={() => removeRequirement(req)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            </FormControl>
-
-            <FormControl label="Widoczność" htmlFor="visibility">
-              <Select
-                value={watch("visibility")}
-                onValueChange={(value) => setValue("visibility", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz widoczność" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="public">Publiczne</SelectItem>
-                  <SelectItem value="private">Prywatne</SelectItem>
-                  <SelectItem value="students_only">Tylko dla uczniów</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormControl>
-          </CardContent>
-        </Card>
-
-        {/* Form Actions */}
-        <FormActions>
-          <Button type="button" variant="outline" onClick={() => list("events")}>
+    <div className="min-h-screen bg-gray-50/50">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white border-b">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => list("events")}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Anuluj
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Tworzenie..." : "Utwórz wydarzenie"}
-          </Button>
-        </FormActions>
-      </Form>
-    </>
+          
+          <h1 className="font-semibold">Nowe wydarzenie</h1>
+          
+          <div className="w-20" /> {/* Spacer for centering */}
+        </div>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="bg-white border-b">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => currentStep > step.number && setCurrentStep(step.number)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
+                    currentStep === step.number && "bg-purple-100 text-purple-700",
+                    currentStep > step.number && "text-green-600 cursor-pointer hover:bg-gray-100",
+                    currentStep < step.number && "text-gray-400"
+                  )}
+                  disabled={currentStep < step.number}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all",
+                    currentStep === step.number && "bg-purple-600 text-white",
+                    currentStep > step.number && "bg-green-600 text-white",
+                    currentStep < step.number && "bg-gray-200"
+                  )}>
+                    {currentStep > step.number ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      step.number
+                    )}
+                  </div>
+                  <span className="hidden sm:inline font-medium">{step.title}</span>
+                </button>
+                {index < steps.length - 1 && (
+                  <div className={cn(
+                    "w-12 h-0.5 mx-2",
+                    currentStep > step.number ? "bg-green-600" : "bg-gray-200"
+                  )} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="max-w-3xl mx-auto px-4 py-6">
+        {/* Step 1: Podstawy */}
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>O czym jest Twoje wydarzenie?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Event Category */}
+                <div>
+                  <Label className="text-base font-medium mb-3 block">
+                    Wybierz typ wydarzenia
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {eventCategories.map((category) => (
+                      <button
+                        key={category.value}
+                        type="button"
+                        onClick={() => setValue("event_category", category.value)}
+                        className={cn(
+                          "p-4 rounded-lg border-2 transition-all text-left",
+                          eventCategory === category.value
+                            ? "border-purple-600 bg-purple-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={cn(
+                            "p-1.5 rounded",
+                            eventCategory === category.value
+                              ? "bg-purple-600 text-white"
+                              : "bg-gray-100"
+                          )}>
+                            {category.icon}
+                          </div>
+                          <span className="font-medium">{category.label}</span>
+                        </div>
+                        <p className="text-xs text-gray-600">{category.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <Label htmlFor="title">
+                    Nazwa wydarzenia <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    placeholder="np. Salsa kubańska dla początkujących"
+                    className="mt-1"
+                    {...register("title", {
+                      required: "Nazwa jest wymagana",
+                      minLength: {
+                        value: 5,
+                        message: "Nazwa musi mieć minimum 5 znaków",
+                      },
+                    })}
+                  />
+                  {errors.title && (
+                    <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
+                  )}
+                </div>
+
+                {/* Dance Style */}
+                <div>
+                  <Label htmlFor="dance_style_id">Styl tańca</Label>
+                  <Select
+                    value={watch("dance_style_id")}
+                    onValueChange={(value) => setValue("dance_style_id", value)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Wybierz styl tańca" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {danceStyles.map((style) => (
+                        <SelectItem key={style.id} value={style.id}>
+                          {style.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <Label htmlFor="description">
+                    Opis wydarzenia <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Opisz co będzie się działo, dla kogo jest wydarzenie, czego nauczysz..."
+                    rows={4}
+                    className="mt-1"
+                    {...register("description", {
+                      required: "Opis jest wymagany",
+                      minLength: {
+                        value: 20,
+                        message: "Opis musi mieć minimum 20 znaków",
+                      },
+                    })}
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+                  )}
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <Label>Tagi (opcjonalne)</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      placeholder="np. latino, wieczorem, dla par"
+                      value={currentTag}
+                      onChange={(e) => setCurrentTag(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" onClick={addTag}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {tags.map((tag, idx) => (
+                        <Badge key={idx} variant="secondary">
+                          #{tag}
+                          <X
+                            className="w-3 h-3 ml-1 cursor-pointer"
+                            onClick={() => removeTag(tag)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 2: Termin */}
+        {currentStep === 2 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Kiedy się odbędzie?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label htmlFor="event_date">
+                    Data <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="event_date"
+                    type="date"
+                    min={new Date().toISOString().split("T")[0]}
+                    className="mt-1"
+                    {...register("event_date", {
+                      required: "Data jest wymagana",
+                    })}
+                  />
+                  {errors.event_date && (
+                    <p className="text-sm text-red-500 mt-1">{errors.event_date.message}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start_time">
+                      Godzina rozpoczęcia <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      className="mt-1"
+                      {...register("start_time", {
+                        required: "Godzina rozpoczęcia jest wymagana",
+                      })}
+                    />
+                    {errors.start_time && (
+                      <p className="text-sm text-red-500 mt-1">{errors.start_time.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="end_time">
+                      Godzina zakończenia <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="end_time"
+                      type="time"
+                      className="mt-1"
+                      {...register("end_time", {
+                        required: "Godzina zakończenia jest wymagana",
+                      })}
+                    />
+                    {errors.end_time && (
+                      <p className="text-sm text-red-500 mt-1">{errors.end_time.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick time suggestions */}
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Popularne godziny:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["18:00", "19:00", "20:00", "10:00", "11:00"].map((time) => (
+                      <Button
+                        key={time}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setValue("start_time", time)}
+                      >
+                        {time}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 3: Miejsce */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gdzie się odbędzie?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label>Typ lokalizacji</Label>
+                  <RadioGroup
+                    value={locationType}
+                    onValueChange={(value) => setValue("location_type", value)}
+                    className="mt-2 space-y-2"
+                  >
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                      <RadioGroupItem value="address" id="address" />
+                      <Label htmlFor="address" className="flex-1 cursor-pointer">
+                        <span className="font-medium">Konkretny adres</span>
+                        <p className="text-sm text-gray-600">Studio, sala, klub</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                      <RadioGroupItem value="online" id="online" />
+                      <Label htmlFor="online" className="flex-1 cursor-pointer">
+                        <span className="font-medium">Online</span>
+                        <p className="text-sm text-gray-600">Zoom, Google Meet, itp.</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                      <RadioGroupItem value="client_location" id="client_location" />
+                      <Label htmlFor="client_location" className="flex-1 cursor-pointer">
+                        <span className="font-medium">U klienta</span>
+                        <p className="text-sm text-gray-600">Dojazd do uczestnika</p>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {locationType === "online" ? (
+                  <div>
+                    <Label htmlFor="online_platform">
+                      Platforma <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={watch("online_platform")}
+                      onValueChange={(value) => setValue("online_platform", value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Wybierz platformę" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="zoom">Zoom</SelectItem>
+                        <SelectItem value="google_meet">Google Meet</SelectItem>
+                        <SelectItem value="skype">Skype</SelectItem>
+                        <SelectItem value="other">Inne</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : locationType === "address" && (
+                  <>
+                    <div>
+                      <Label htmlFor="location_name">Nazwa miejsca</Label>
+                      <Input
+                        id="location_name"
+                        placeholder="np. Studio Tańca Salsa"
+                        className="mt-1"
+                        {...register("location_name")}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="address">
+                        Adres <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="address"
+                        placeholder="ul. Taneczna 10"
+                        className="mt-1"
+                        {...register("address", {
+                          required: locationType === "address" ? "Adres jest wymagany" : false,
+                        })}
+                      />
+                      {errors.address && (
+                        <p className="text-sm text-red-500 mt-1">{errors.address.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="city">
+                        Miasto <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="city"
+                        placeholder="Warszawa"
+                        className="mt-1"
+                        {...register("city", {
+                          required: locationType === "address" ? "Miasto jest wymagane" : false,
+                        })}
+                      />
+                      {errors.city && (
+                        <p className="text-sm text-red-500 mt-1">{errors.city.message}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 4: Szczegóły */}
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ostatnie szczegóły</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Price */}
+                <div>
+                  <Label htmlFor="price_amount">Cena (PLN)</Label>
+                  <Input
+                    id="price_amount"
+                    type="number"
+                    min="0"
+                    step="5"
+                    placeholder="0"
+                    className="mt-1"
+                    {...register("price_amount")}
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Zostaw puste lub wpisz 0 dla wydarzenia darmowego
+                  </p>
+                </div>
+
+                {/* Participants */}
+                <div>
+                  <Label htmlFor="max_participants">Maksymalna liczba uczestników</Label>
+                  <Input
+                    id="max_participants"
+                    type="number"
+                    min="1"
+                    placeholder="Bez limitu"
+                    className="mt-1"
+                    {...register("max_participants")}
+                  />
+                </div>
+
+                {/* Skill Level */}
+                <div>
+                  <Label htmlFor="skill_level_required">Poziom zaawansowania</Label>
+                  <Select
+                    value={watch("skill_level_required")}
+                    onValueChange={(value) => setValue("skill_level_required", value)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Dla każdego" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Początkujący</SelectItem>
+                      <SelectItem value="intermediate">Średniozaawansowany</SelectItem>
+                      <SelectItem value="advanced">Zaawansowany</SelectItem>
+                      <SelectItem value="professional">Profesjonalny</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Partner Required */}
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <Label htmlFor="requires_partner" className="text-base font-medium">
+                      Wymagany partner
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      Czy uczestnicy muszą przyjść w parach?
+                    </p>
+                  </div>
+                  <Switch
+                    id="requires_partner"
+                    checked={watch("requires_partner")}
+                    onCheckedChange={(checked) => setValue("requires_partner", checked)}
+                  />
+                </div>
+
+                {/* Event Format */}
+                <div>
+                  <Label>Format zajęć</Label>
+                  <RadioGroup
+                    value={watch("event_format")}
+                    onValueChange={(value) => setValue("event_format", value)}
+                    className="mt-2 grid grid-cols-2 gap-2"
+                  >
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="individual" id="individual" />
+                      <Label htmlFor="individual">Indywidualne</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="group" id="group" />
+                      <Label htmlFor="group">Grupowe</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Summary Card */}
+            <Card className="bg-purple-50 border-purple-200">
+              <CardHeader>
+                <CardTitle className="text-lg">Podsumowanie</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Nazwa:</span>
+                  <span className="font-medium">{watch("title")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Data:</span>
+                  <span className="font-medium">
+                    {watch("event_date") && format(new Date(watch("event_date")), "d MMMM yyyy", { locale: pl })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Godzina:</span>
+                  <span className="font-medium">
+                    {watch("start_time")} - {watch("end_time")}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cena:</span>
+                  <span className="font-medium">
+                    {priceAmount ? `${priceAmount} PLN` : "Darmowe"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8">
+          {currentStep > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCurrentStep(currentStep - 1)}
+            >
+              Wstecz
+            </Button>
+          ) : (
+            <div />
+          )}
+
+          {currentStep < 4 ? (
+            <Button
+              type="button"
+              onClick={() => setCurrentStep(currentStep + 1)}
+              disabled={!isStepValid()}
+            >
+              Dalej
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Tworzenie..." : "Utwórz wydarzenie"}
+            </Button>
+          )}
+        </div>
+      </form>
+    </div>
   );
 };
