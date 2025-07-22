@@ -96,7 +96,6 @@ updated_at TIMESTAMPTZ DEFAULT now()
 CREATE TABLE event_participants ( 
 id UUID NOT NULL DEFAULT uuid_generate_v4(), 
 event_id UUID NOT NULL, 
-event_type USER-DEFINED NOT NULL, 
 participant_id UUID NOT NULL, 
 partner_id UUID, 
 status USER-DEFINED DEFAULT 'registered'::participant_status,

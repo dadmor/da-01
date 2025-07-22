@@ -25,7 +25,8 @@ import {
   Phone,
   Globe,
   CheckCircle,
-  Activity
+  Activity,
+  Ticket
 } from "lucide-react";
 import { Badge, Button, Separator } from "@/components/ui";
 import { useLoading } from "@/utility";
@@ -36,6 +37,27 @@ import { pl } from "date-fns/locale";
 import { Dancer, UserIdentity } from "./dancers";
 import { Event } from "../events/events";
 import { cn } from "@/utility";
+
+interface Event {
+  id: string;
+  title: string;
+  start_datetime: string;
+  end_datetime: string;
+  location_name?: string;
+  address?: string;
+  city?: string;
+  price_amount?: number;
+  current_participants: number;
+  max_participants?: number;
+  dance_styles?: {
+    name: string;
+  };
+  users?: {
+    dancers?: Array<{
+      name: string;
+    }>;
+  };
+}
 
 interface InstructorStats {
   totalEvents: number;
@@ -108,6 +130,78 @@ export const DancersShow = () => {
     ],
     queryOptions: {
       enabled: !!record?.users?.id && !!record?.dancer_dance_styles?.some((ds) => ds.is_teaching),
+    },
+  });
+
+  // Pobierz wszystkie wydarzenia utworzone przez instruktora
+  const { data: allCreatedEvents } = useList<Event>({
+    resource: "events",
+    filters: [
+      {
+        field: "organizer_id",
+        operator: "eq",
+        value: record?.users?.id || "",
+      },
+    ],
+    meta: {
+      select: '*, dance_styles(name)',
+    },
+    pagination: {
+      pageSize: 10,
+    },
+    sorters: [
+      {
+        field: "start_datetime",
+        order: "desc",
+      },
+    ],
+    queryOptions: {
+      enabled: !!record?.users?.id && !!record?.dancer_dance_styles?.some((ds) => ds.is_teaching),
+    },
+  });
+
+  // Pobierz wydarzenia, w których tancerz bierze udział
+  const { data: participatingEvents } = useList({
+    resource: "event_participants",
+    filters: [
+      {
+        field: "participant_id",
+        operator: "eq",
+        value: record?.users?.id || "",
+      },
+    ],
+    meta: {
+      select: `*, 
+        events!event_participants_event_id_fkey(
+          id,
+          title,
+          start_datetime,
+          end_datetime,
+          location_name,
+          address,
+          city,
+          price_amount,
+          current_participants,
+          max_participants,
+          status,
+          dance_styles(name),
+          users!events_organizer_id_fkey(
+            id,
+            dancers(name)
+          )
+        )`,
+    },
+    pagination: {
+      pageSize: 10,
+    },
+    sorters: [
+      {
+        field: "registered_at",
+        order: "desc",
+      },
+    ],
+    queryOptions: {
+      enabled: !!record?.users?.id,
     },
   });
 
@@ -532,6 +626,191 @@ export const DancersShow = () => {
                 </Button>
               </div>
             )}
+
+            {/* All Created Events - for instructors */}
+            {isInstructor && (
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-purple-600" />
+                  Historia utworzonych wydarzeń
+                </h3>
+                {allCreatedEvents?.data && allCreatedEvents.data.length > 0 ? (
+                  <>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                      {allCreatedEvents.data.map((event) => {
+                        const isPast = new Date(event.start_datetime) < new Date();
+                        return (
+                          <div 
+                            key={event.id} 
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer",
+                              isPast && "opacity-60"
+                            )}
+                            onClick={() => window.location.href = `/events/show/${event.id}`}
+                          >
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 text-sm">
+                                {event.title}
+                              </h4>
+                              <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
+                                <span>{format(new Date(event.start_datetime), "d MMM yyyy", { locale: pl })}</span>
+                                {event.dance_styles && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{event.dance_styles.name}</span>
+                                  </>
+                                )}
+                                <span>•</span>
+                                <span>{event.current_participants || 0} uczestników</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {isPast ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  Zakończone
+                                </Badge>
+                              ) : (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-800 border-0">
+                                  Aktywne
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {allCreatedEvents.total > 10 && (
+                      <p className="text-sm text-gray-600 text-center mt-3">
+                        Pokazano 10 z {allCreatedEvents.total} wydarzeń
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <Calendar className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Brak utworzonych wydarzeń
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Events Participating In */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-purple-600" />
+                Wydarzenia, w których {isOwnProfile ? 'bierzesz' : 'bierze'} udział
+              </h3>
+              {participatingEvents?.data && participatingEvents.data.filter(p => p.events).length > 0 ? (
+                <>
+                  <div className="space-y-3">
+                    {participatingEvents.data
+                      .filter(p => p.events)
+                      .map((participation) => {
+                        const event = participation.events;
+                        if (!event) return null;
+                        
+                        const isPast = new Date(event.start_datetime) < new Date();
+                        const organizerName = event.users?.dancers?.[0]?.name || "Nieznany organizator";
+                        
+                        return (
+                          <div 
+                            key={participation.id} 
+                            className="group p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                            onClick={() => window.location.href = `/events/show/${event.id}`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                                  {event.title}
+                                </h4>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Organizator: {organizerName}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <Badge 
+                                  variant={participation.status === 'confirmed' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {participation.status === 'registered' && 'Zarejestrowany'}
+                                  {participation.status === 'confirmed' && 'Potwierdzony'}
+                                  {participation.status === 'cancelled' && 'Anulowany'}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(event.start_datetime), "d MMMM yyyy, HH:mm", { locale: pl })}
+                              </span>
+                              {event.dance_styles && (
+                                <span className="flex items-center gap-1">
+                                  <Music className="w-3 h-3" />
+                                  {event.dance_styles.name}
+                                </span>
+                              )}
+                              {event.city && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {event.city}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {participation.partner_id && (
+                              <div className="mt-2 text-sm text-purple-600">
+                                <Heart className="w-3 h-3 inline mr-1" />
+                                Z partnerem
+                              </div>
+                            )}
+                            
+                            {/* Status wydarzenia */}
+                            {isPast && (
+                              <Badge variant="secondary" className="mt-2 text-xs">
+                                Zakończone
+                              </Badge>
+                            )}
+                            {!isPast && event.status === 'cancelled' && (
+                              <Badge variant="destructive" className="mt-2 text-xs">
+                                Odwołane
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                    }).filter(Boolean)}
+                  </div>
+                  {participatingEvents.total > participatingEvents.data.length && (
+                    <Button 
+                      className="w-full mt-4" 
+                      variant="outline"
+                      onClick={() => window.location.href = `/events?participant=${record.users?.id}`}
+                    >
+                      Zobacz wszystkie wydarzenia ({participatingEvents.total})
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Ticket className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    {isOwnProfile ? 'Nie bierzesz' : 'Nie bierze'} udziału w żadnych wydarzeniach
+                  </p>
+                  {isOwnProfile && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-3"
+                      onClick={() => window.location.href = '/events'}
+                    >
+                      Przeglądaj wydarzenia
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Additional Info */}
             <div className="flex flex-wrap gap-4 pt-6 border-t text-sm text-gray-600">
