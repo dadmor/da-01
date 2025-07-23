@@ -52,7 +52,6 @@ interface DanceStyle {
 interface EventFormData {
   title: string;
   event_category: string;
-  event_format: string;
   dance_style_id?: string;
   description: string;
   event_date: string;
@@ -77,8 +76,6 @@ export const EventsCreate = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
   const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
-  const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState("");
 
   const {
     register,
@@ -89,10 +86,9 @@ export const EventsCreate = () => {
   } = useForm<EventFormData>({
     defaultValues: {
       event_category: "lesson",
-      event_format: "individual",
-      location_type: "address",
+      location_type: "physical",
       visibility: "public",
-      status: "active",
+      status: "published",
       requires_partner: false,
     },
   });
@@ -128,39 +124,24 @@ export const EventsCreate = () => {
       description: "Intensywne szkolenie tematyczne",
     },
     {
-      value: "party",
-      label: "Impreza",
+      value: "social",
+      label: "Potańcówka",
       icon: <Sparkles className="w-4 h-4" />,
-      description: "Potańcówka lub event towarzyski",
+      description: "Impreza taneczna",
     },
     {
-      value: "outdoor",
-      label: "Plener",
-      icon: <MapPin className="w-4 h-4" />,
-      description: "Taniec na świeżym powietrzu",
+      value: "competition",
+      label: "Zawody",
+      icon: <Trophy className="w-4 h-4" />,
+      description: "Turniej taneczny",
     },
     {
-      value: "course",
-      label: "Kurs",
+      value: "performance",
+      label: "Występ",
       icon: <TrendingUp className="w-4 h-4" />,
-      description: "Cykl zajęć z progresją",
+      description: "Pokaz taneczny",
     },
   ];
-
-  const addTag = () => {
-    if (
-      currentTag.trim() &&
-      !tags.includes(currentTag.trim()) &&
-      tags.length < 5
-    ) {
-      setTags([...tags, currentTag.trim()]);
-      setCurrentTag("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
 
   const handleFormSubmit = async (data: any) => {
     if (!identity?.id) {
@@ -173,27 +154,36 @@ export const EventsCreate = () => {
     try {
       const eventData = {
         organizer_id: identity.id,
-        ...data,
-        tags: tags.length > 0 ? tags : null,
-        start_datetime: new Date(
+        title: data.title,
+        description: data.description,
+        event_type: data.event_category,
+        dance_style_id: data.dance_style_id || null,
+        start_at: new Date(
           `${data.event_date}T${data.start_time}`
         ).toISOString(),
-        end_datetime: new Date(
+        end_at: new Date(
           `${data.event_date}T${data.end_time}`
         ).toISOString(),
-        price_amount: data.price_amount ? parseFloat(data.price_amount) : null,
+        is_recurring: false,
+        location_type: data.location_type,
+        location_name: data.location_name || null,
+        address: data.address || null,
+        city: data.city || null,
+        online_platform: data.online_platform || null,
+        online_link: data.online_link || null,
+        price: data.price_amount ? parseFloat(data.price_amount) : 0,
+        currency: "PLN",
         max_participants: data.max_participants
           ? parseInt(data.max_participants)
           : null,
         min_participants: 1,
-        current_participants: 0,
-        price_currency: "PLN",
-        price_per: "person",
+        participant_count: 0,
+        skill_level_min: data.skill_level_required || null,
+        skill_level_max: data.skill_level_required || null,
+        requires_partner: data.requires_partner,
+        visibility: data.visibility,
+        status: data.status,
       };
-
-      delete eventData.event_date;
-      delete eventData.start_time;
-      delete eventData.end_time;
 
       const { data: insertedEvent, error } = await supabaseClient
         .from("events")
@@ -254,7 +244,7 @@ export const EventsCreate = () => {
             Anuluj
           </Button>
           <h1 className="font-semibold text-xl">Nowe wydarzenie</h1>
-          <div className="w-20" /> {/* Spacer for centering */}
+          <div className="w-20" />
         </div>
       </div>
 
@@ -432,40 +422,6 @@ export const EventsCreate = () => {
                     </p>
                   )}
                 </div>
-
-                {/* Tags */}
-                <div>
-                  <Label>Tagi (opcjonalne)</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      placeholder="np. latino, wieczorem, dla par"
-                      value={currentTag}
-                      onChange={(e) => setCurrentTag(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addTag();
-                        }
-                      }}
-                    />
-                    <Button type="button" variant="outline" onClick={addTag}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {tags.map((tag, idx) => (
-                        <Badge key={idx} variant="secondary">
-                          #{tag}
-                          <X
-                            className="w-3 h-3 ml-1 cursor-pointer"
-                            onClick={() => removeTag(tag)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -583,12 +539,12 @@ export const EventsCreate = () => {
                     className="mt-2 space-y-2"
                   >
                     <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                      <RadioGroupItem value="address" id="address" />
+                      <RadioGroupItem value="physical" id="physical" />
                       <Label
-                        htmlFor="address"
+                        htmlFor="physical"
                         className="flex-1 cursor-pointer"
                       >
-                        <span className="font-medium">Konkretny adres</span>
+                        <span className="font-medium">Stacjonarne</span>
                         <p className="text-sm text-gray-600">
                           Studio, sala, klub
                         </p>
@@ -605,16 +561,16 @@ export const EventsCreate = () => {
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
                       <RadioGroupItem
-                        value="client_location"
-                        id="client_location"
+                        value="hybrid"
+                        id="hybrid"
                       />
                       <Label
-                        htmlFor="client_location"
+                        htmlFor="hybrid"
                         className="flex-1 cursor-pointer"
                       >
-                        <span className="font-medium">U klienta</span>
+                        <span className="font-medium">Hybrydowe</span>
                         <p className="text-sm text-gray-600">
-                          Dojazd do uczestnika
+                          Stacjonarnie i online
                         </p>
                       </Label>
                     </div>
@@ -644,7 +600,7 @@ export const EventsCreate = () => {
                     </Select>
                   </div>
                 ) : (
-                  locationType === "address" && (
+                  (locationType === "physical" || locationType === "hybrid") && (
                     <>
                       <div>
                         <Label htmlFor="location_name">Nazwa miejsca</Label>
@@ -666,7 +622,7 @@ export const EventsCreate = () => {
                           className="mt-1"
                           {...register("address", {
                             required:
-                              locationType === "address"
+                              (locationType === "physical" || locationType === "hybrid")
                                 ? "Adres jest wymagany"
                                 : false,
                           })}
@@ -688,7 +644,7 @@ export const EventsCreate = () => {
                           className="mt-1"
                           {...register("city", {
                             required:
-                              locationType === "address"
+                              (locationType === "physical" || locationType === "hybrid")
                                 ? "Miasto jest wymagane"
                                 : false,
                           })}
@@ -795,25 +751,6 @@ export const EventsCreate = () => {
                     }
                   />
                 </div>
-
-                {/* Event Format */}
-                <div>
-                  <Label>Format zajęć</Label>
-                  <RadioGroup
-                    value={watch("event_format")}
-                    onValueChange={(value) => setValue("event_format", value)}
-                    className="mt-2 grid grid-cols-2 gap-2"
-                  >
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <RadioGroupItem value="individual" id="individual" />
-                      <Label htmlFor="individual">Indywidualne</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <RadioGroupItem value="group" id="group" />
-                      <Label htmlFor="group">Grupowe</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
               </CardContent>
             </Card>
 
@@ -881,7 +818,7 @@ export const EventsCreate = () => {
             </Button>
           )}
         </div>
-      </form>
+      </form> 
     </div>
   );
 };
