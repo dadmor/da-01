@@ -40,6 +40,7 @@ WITH trigger_info AS (
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE t.trigger_schema = 'public'
     AND n.nspname = 'public'
+    AND t.trigger_name LIKE 'trg_%'  -- Tylko triggery z prefiksem trg_
 ),
 function_info AS (
   SELECT 
@@ -52,14 +53,16 @@ function_info AS (
   LEFT JOIN pg_description d ON d.objoid = p.oid
   WHERE n.nspname = 'public'
     AND p.prokind IN ('f', 'p')  -- f=function, p=procedure
+    AND p.proname LIKE 'fn_%'  -- Tylko funkcje z prefiksem fn_
 )
 SELECT 
   '# DATABASE TRIGGERS AND FUNCTIONS' || E'\n' ||
-  'Generated: ' || NOW()::text || E'\n\n' ||
+  'Generated: ' || NOW()::text || E'\n' ||
+  'Filter: Only triggers with prefix "trg_" and functions with prefix "fn_"' || E'\n\n' ||
   
   CASE 
     WHEN EXISTS (SELECT 1 FROM trigger_info) 
-    THEN '## TRIGGERS' || E'\n\n' || 
+    THEN '## TRIGGERS (prefix: trg_)' || E'\n\n' || 
       (SELECT STRING_AGG(
         '### Trigger: ' || trigger_name || E'\n' ||
         '- **Table**: ' || table_name || E'\n' ||
@@ -74,12 +77,12 @@ SELECT
         E'\n'
         ORDER BY table_name, trigger_name
       ) FROM trigger_info) || E'\n\n'
-    ELSE '## TRIGGERS\n\n*No triggers found in public schema*\n\n'
+    ELSE '## TRIGGERS (prefix: trg_)\n\n*No triggers found with prefix "trg_" in public schema*\n\n'
   END ||
   
   CASE 
     WHEN EXISTS (SELECT 1 FROM function_info) 
-    THEN '## FUNCTIONS' || E'\n\n' || 
+    THEN '## FUNCTIONS (prefix: fn_)' || E'\n\n' || 
       (SELECT STRING_AGG(
         '### Function: ' || function_name || '(' || arguments || ')' || E'\n' ||
         CASE 
@@ -91,7 +94,7 @@ SELECT
         E'\n'
         ORDER BY function_name
       ) FROM function_info)
-    ELSE '## FUNCTIONS\n\n*No functions found in public schema*'
+    ELSE '## FUNCTIONS (prefix: fn_)\n\n*No functions found with prefix "fn_" in public schema*'
   END
   as export;
 EOF
@@ -100,9 +103,9 @@ EOF
 if [ $? -eq 0 ]; then
     echo "✅ Triggery i funkcje zapisane do: $OUTPUT_FILE"
     echo ""
-    echo "📊 Wyeksportowano:"
-    echo "  - Triggery (z pełnymi definicjami)"
-    echo "  - Funkcje (z kodem źródłowym)"
+    echo "📊 Wyeksportowano (z filtrem prefiksów):"
+    echo "  - Triggery z prefiksem 'trg_' (z pełnymi definicjami)"
+    echo "  - Funkcje z prefiksem 'fn_' (z kodem źródłowym)"
     echo ""
     
     # Szybkie podsumowanie
@@ -110,8 +113,8 @@ if [ $? -eq 0 ]; then
     FUNCTION_COUNT=$(grep -c "### Function:" "$OUTPUT_FILE" 2>/dev/null || echo "0")
     
     echo "📈 Statystyki:"
-    echo "  - Triggerów: $TRIGGER_COUNT"
-    echo "  - Funkcji: $FUNCTION_COUNT"
+    echo "  - Triggerów (trg_*): $TRIGGER_COUNT"
+    echo "  - Funkcji (fn_*): $FUNCTION_COUNT"
 else
     echo "❌ Błąd podczas pobierania triggerów i funkcji"
     exit 1
