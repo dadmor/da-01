@@ -50,6 +50,8 @@ AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EventRegistrationButton } from "./components/EventRegistrationButton";
+
 
 interface DanceStyle {
 id: string;
@@ -90,7 +92,6 @@ website_url?: string;
 registration_url?: string;
 min_participants: number;
 max_participants?: number;
-// participant_count został usunięty z tabeli events
 skill_level_min?: string;
 skill_level_max?: string;
 price: number;
@@ -135,8 +136,6 @@ const { list, edit } = useNavigation();
 const { mutate: deleteEvent } = useDelete();
 const invalidate = useInvalidate();
 
-const [isRegistering, setIsRegistering] = useState(false);
-const [userParticipation, setUserParticipation] = useState<Participant | null>(null);
 const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 const [participantCount, setParticipantCount] = useState(0);
 const [participants, setParticipants] = useState<ParticipantWithUser[]>([]);
@@ -149,9 +148,7 @@ const record = data?.data as Event;
 const fetchParticipants = async () => {
   if (!record?.id) return;
   
-  console.log('Fetching participants for event:', record.id);
   setLoadingParticipants(true);
-  
   try {
     // Najpierw pobierz samych uczestników
     const { data: participantsData, error } = await supabaseClient
@@ -211,34 +208,6 @@ useEffect(() => {
     fetchParticipants();
   }
 }, [record?.id]);
-
-// Sprawdź czy użytkownik jest zapisany
-useEffect(() => {
-  const checkUserParticipation = async () => {
-    if (identity?.id && record?.id) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('event_participants')
-          .select('*')
-          .eq('event_id', record.id)
-          .eq('user_id', identity.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('Error checking participation:', error);
-          return;
-        }
-        
-        console.log('User participation check:', data);
-        setUserParticipation(data);
-      } catch (error) {
-        console.error('Error checking participation:', error);
-      }
-    }
-  };
-
-  checkUserParticipation();
-}, [identity?.id, record?.id]); // Usunięto record?.participant_count z dependencies
 
 const init = useLoading({ isLoading, isError });
 if (init) return init;
@@ -339,100 +308,6 @@ const getStatusBadge = (status: string) => {
       <span className="ml-1">{config.label}</span>
     </Badge>
   );
-};
-
-const handleRegistration = async () => {
-  if (!identity?.id) {
-    toast.error("Musisz być zalogowany", {
-      description: "Zaloguj się, aby zapisać się na wydarzenie",
-    });
-    return;
-  }
-
-  setIsRegistering(true);
-
-  try {
-    if (userParticipation) {
-      // Wypisz się
-      console.log('Unregistering, participation:', userParticipation);
-      
-      const { error } = await supabaseClient
-        .from('event_participants')
-        .delete()
-        .eq('id', userParticipation.id);
-
-      if (error) throw error;
-
-      setUserParticipation(null);
-      
-      // Odśwież listę uczestników
-      await fetchParticipants();
-      
-      toast.success("Wypisano z wydarzenia");
-      
-      // Odśwież dane przez refine
-      invalidate({
-        resource: "events",
-        invalidates: ["detail"],
-        id: record.id,
-      });
-    } else {
-      // Zapisz się
-      console.log('Registering for event:', record.id);
-      
-      const { data, error } = await supabaseClient
-        .from('event_participants')
-        .insert({
-          event_id: record.id,
-          user_id: identity.id,
-          status: 'registered'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        // Jeśli błąd duplikatu, sprawdź ponownie stan
-        if (error.code === '23505') {
-          const { data: existingParticipation } = await supabaseClient
-            .from('event_participants')
-            .select('*')
-            .eq('event_id', record.id)
-            .eq('user_id', identity.id)
-            .maybeSingle();
-            
-          if (existingParticipation) {
-            setUserParticipation(existingParticipation);
-            toast.error("Już jesteś zapisany na to wydarzenie");
-            return;
-          }
-        }
-        throw error;
-      }
-
-      setUserParticipation(data);
-      
-      // Odśwież listę uczestników
-      await fetchParticipants();
-      
-      toast.success("Zapisano na wydarzenie!", {
-        description: "Otrzymasz potwierdzenie na email",
-      });
-      
-      // Odśwież dane przez refine
-      invalidate({
-        resource: "events",
-        invalidates: ["detail"],
-        id: record.id,
-      });
-    }
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    toast.error("Błąd", {
-      description: error.message || "Nie udało się wykonać operacji",
-    });
-  } finally {
-    setIsRegistering(false);
-  }
 };
 
 const handleDelete = () => {
@@ -894,28 +769,17 @@ return (
             {!isOrganizer && (
               <>
                 <Separator />
-                <Button
+                <EventRegistrationButton
+                  eventId={record.id}
                   className="w-full"
-                  variant={userParticipation ? "outline" : "default"}
-                  disabled={(!canRegister && !userParticipation) || isRegistering}
-                  onClick={handleRegistration}
-                >
-                  {isRegistering ? (
-                    "Przetwarzanie..."
-                  ) : userParticipation ? (
-                    <>
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Wypisz się
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Zapisz się
-                    </>
-                  )}
-                </Button>
+                  disabled={!canRegister && !record.status}
+                  onRegistrationChange={(isRegistered, newCount) => {
+                    setParticipantCount(newCount);
+                    fetchParticipants();
+                  }}
+                />
                 
-                {!canRegister && !userParticipation && (
+                {!canRegister && (
                   <p className="text-xs text-center text-muted-foreground">
                     {isPast ? "Wydarzenie się zakończyło" :
                      isFull ? "Brak wolnych miejsc" :

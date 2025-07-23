@@ -25,6 +25,8 @@ import { format, addDays, startOfWeek, endOfWeek, isSameDay, isAfter, isBefore, 
 import { pl } from "date-fns/locale";
 import { cn } from "@/utility";
 import { useGetIdentity } from "@refinedev/core";
+import { EventRegistrationButton } from "../events/components/EventRegistrationButton";
+
 
 interface TrainerProfile {
   id: string;
@@ -121,65 +123,64 @@ export const TrainerBooking = () => {
   }, [trainerId]);
 
   // Pobierz dostępne terminy
+  const fetchTimeSlots = async () => {
+    setIsLoading(true);
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    
+    try {
+      // Pobierz wydarzenia trenera w tym tygodniu Z WIDOKU
+      const { data: events, error } = await supabaseClient
+        .from('v_events_with_counts')
+        .select('*')
+        .eq('organizer_id', trainerId)
+        .gte('start_at', weekStart.toISOString())
+        .lte('start_at', weekEnd.toISOString())
+        .in('status', ['published'])
+        .order('start_at');
+
+      if (error) throw error;
+
+      // Konwertuj wydarzenia na sloty czasowe
+      const slots: TimeSlot[] = [];
+      
+      if (events) {
+        events.forEach(event => {
+          const eventDate = new Date(event.start_at);
+          const startTime = format(eventDate, 'HH:mm');
+          const endTime = format(new Date(event.end_at), 'HH:mm');
+          
+          slots.push({
+            id: event.id,
+            event_id: event.id,
+            date: eventDate,
+            start_time: startTime,
+            end_time: endTime,
+            is_available: false, // Event już istnieje
+            is_recurring: event.is_recurring,
+            event: {
+              id: event.id,
+              title: event.title,
+              event_type: event.event_type,
+              location_type: event.location_type,
+              price: event.price,
+              participant_count: event.participant_count || 0, // Z widoku
+              max_participants: event.max_participants || 999,
+            }
+          });
+        });
+      }
+
+      setTimeSlots(slots);
+    } catch (error) {
+      console.error('Error fetching time slots:', error);
+      toast.error("Nie udało się pobrać terminów");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (!trainerId) return;
-    
-    const fetchTimeSlots = async () => {
-      setIsLoading(true);
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-      
-      try {
-        // Pobierz wydarzenia trenera w tym tygodniu
-        const { data: events, error } = await supabaseClient
-          .from('events')
-          .select('*')
-          .eq('organizer_id', trainerId)
-          .gte('start_at', weekStart.toISOString())
-          .lte('start_at', weekEnd.toISOString())
-          .in('status', ['published'])
-          .order('start_at');
-
-        if (error) throw error;
-
-        // Konwertuj wydarzenia na sloty czasowe
-        const slots: TimeSlot[] = [];
-        
-        if (events) {
-          events.forEach(event => {
-            const eventDate = new Date(event.start_at);
-            const startTime = format(eventDate, 'HH:mm');
-            const endTime = format(new Date(event.end_at), 'HH:mm');
-            
-            slots.push({
-              id: event.id,
-              event_id: event.id,
-              date: eventDate,
-              start_time: startTime,
-              end_time: endTime,
-              is_available: false, // Event już istnieje
-              is_recurring: event.is_recurring,
-              event: {
-                id: event.id,
-                title: event.title,
-                event_type: event.event_type,
-                location_type: event.location_type,
-                price: event.price,
-                participant_count: event.participant_count,
-                max_participants: event.max_participants || 999,
-              }
-            });
-          });
-        }
-
-        setTimeSlots(slots);
-      } catch (error) {
-        console.error('Error fetching time slots:', error);
-        toast.error("Nie udało się pobrać terminów");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchTimeSlots();
   }, [trainerId, weekStart]);
 
@@ -203,37 +204,6 @@ export const TrainerBooking = () => {
       } else {
         toast.error("Brak wolnych miejsc");
       }
-    }
-  };
-
-  const handleBooking = async () => {
-    if (!selectedSlot?.event || !identity?.id) {
-      toast.error("Musisz być zalogowany");
-      return;
-    }
-
-    try {
-      // Zapisz na wydarzenie
-      const { error } = await supabaseClient
-        .from('event_participants')
-        .insert({
-          event_id: selectedSlot.event.id,
-          user_id: identity.id,
-          status: 'registered'
-        });
-
-      if (error) throw error;
-
-      toast.success("Zarezerwowano termin!", {
-        description: "Otrzymasz potwierdzenie na email"
-      });
-
-      // Odśwież sloty
-      setBookingStep('calendar');
-      setSelectedSlot(null);
-    } catch (error: any) {
-      console.error('Booking error:', error);
-      toast.error("Nie udało się zarezerwować terminu");
     }
   };
 
@@ -590,13 +560,16 @@ export const TrainerBooking = () => {
                         <X className="w-4 h-4 mr-2" />
                         Anuluj
                       </Button>
-                      <Button
+                      <EventRegistrationButton
+                        eventId={selectedSlot.event.id}
                         className="flex-1"
-                        onClick={handleBooking}
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Potwierdź rezerwację
-                      </Button>
+                        onRegistrationChange={() => {
+                          setBookingStep('calendar');
+                          setSelectedSlot(null);
+                          // Odśwież listę slotów
+                          fetchTimeSlots();
+                        }}
+                      />
                     </div>
                   </>
                 )}
