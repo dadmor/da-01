@@ -60,27 +60,31 @@ interface EventPreview {
 const EXAMPLE_PROMPTS = [
   {
     title: "Warsztaty salsy",
-    prompt: "Zorganizuj warsztaty salsy kubańskiej dla średniozaawansowanych, w sobotnie popołudnie, 2 godziny, maksymalnie 20 osób, cena 60 zł",
+    prompt:
+      "Zorganizuj warsztaty salsy kubańskiej dla średniozaawansowanych, w sobotnie popołudnie, 2 godziny, maksymalnie 20 osób, cena 60 zł",
   },
   {
     title: "Potańcówka taneczna",
-    prompt: "Stwórz wydarzenie - potańcówka z muzyką latynoską, piątkowy wieczór od 20:00 do 1:00, dla wszystkich poziomów, wstęp 30 zł",
+    prompt:
+      "Stwórz wydarzenie - potańcówka z muzyką latynoską, piątkowy wieczór od 20:00 do 1:00, dla wszystkich poziomów, wstęp 30 zł",
   },
   {
     title: "Lekcja tanga",
-    prompt: "Lekcja tanga argentyńskiego dla początkujących, środa 19:00, 90 minut, wymagany partner, maksymalnie 8 par, 40 zł od osoby",
+    prompt:
+      "Lekcja tanga argentyńskiego dla początkujących, środa 19:00, 90 minut, wymagany partner, maksymalnie 8 par, 40 zł od osoby",
   },
   {
     title: "Turniej taneczny",
-    prompt: "Zawody taneczne w stylach standardowych, niedziela od 10:00, dla zaawansowanych i profesjonalnych, wpisowe 100 zł",
+    prompt:
+      "Zawody taneczne w stylach standardowych, niedziela od 10:00, dla zaawansowanych i profesjonalnych, wpisowe 100 zł",
   },
 ];
 
 // Funkcja do ponownego próbowania żądania
 const retryOperation = async (
   execute: () => Promise<any>,
-  maxRetries: number = 3,
-  delay: number = 1000
+  maxRetries = 3,
+  delay = 1000
 ): Promise<any> => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -96,46 +100,7 @@ const retryOperation = async (
   }
 };
 
-// Fallback do generowania danych z promptu
-const generateFallbackEvent = (prompt: string): EventPreview => {
-  const titleMatch = prompt.match(/(warsztaty|potańcówka|lekcja|zawody|występ)\s+([^\,]+)/i);
-  const styleMatch = prompt.match(/salsy|bachaty|tanga|latynoską|standardowych/i);
-  const levelMatch = prompt.match(/początkujących|średniozaawansowanych|zaawansowanych|profesjonalnych/i);
-  const timeMatch = prompt.match(/(\d{1,2}:\d{2})\s*(?:do|-)\s*(\d{1,2}:\d{2})|(\d+)\s*(minut|godzin)/i);
-  const participantsMatch = prompt.match(/maksymalnie\s+(\d+)\s*(osób|par)/i);
-  const priceMatch = prompt.match(/(\d+)\s*zł/i);
-  const partnerMatch = prompt.match(/wymagany partner/i);
-  const dateMatch = prompt.match(/(poniedziałek|wtorek|środa|czwartek|piątek|sobota|niedziela)/i);
-
-  const nextSaturday = addDays(new Date(), (6 - new Date().getDay() + 7) % 7 || 7);
-
-  return {
-    title: titleMatch ? titleMatch[2].trim() : "Wydarzenie Taneczne",
-    description: `Wydarzenie taneczne na podstawie opisu: ${prompt.slice(0, 100)}...`,
-    event_category: titleMatch
-      ? titleMatch[1].toLowerCase() === "warsztaty" ? "workshop" :
-        titleMatch[1].toLowerCase() === "potańcówka" ? "social" :
-        titleMatch[1].toLowerCase() === "lekcja" ? "lesson" :
-        titleMatch[1].toLowerCase() === "zawody" ? "competition" : "performance"
-      : "workshop",
-    dance_style: styleMatch ? styleMatch[0].toLowerCase() : null,
-    event_date: dateMatch
-      ? format(addDays(new Date(), (["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"].indexOf(dateMatch[1]) + 7 - new Date().getDay()) % 7 || 7), "yyyy-MM-dd")
-      : format(nextSaturday, "yyyy-MM-dd"),
-    start_time: timeMatch ? timeMatch[1] || "14:00" : "14:00",
-    end_time: timeMatch ? timeMatch[2] || (timeMatch[3] && parseInt(timeMatch[3]) ? format(new Date(`2000-01-01T${timeMatch[1] || "14:00"}:00`).getTime() + parseInt(timeMatch[3]) * (timeMatch[4] === "godzin" ? 3600000 : 60000), "HH:mm") : "16:00") : "16:00",
-    skill_level_required: levelMatch
-      ? levelMatch[0].toLowerCase() === "początkujących" ? "beginner" :
-        levelMatch[0].toLowerCase() === "średniozaawansowanych" ? "intermediate" :
-        levelMatch[0].toLowerCase() === "zaawansowanych" ? "advanced" : "professional"
-      : null,
-    max_participants: participantsMatch ? participantsMatch[1] : null,
-    price_amount: priceMatch ? priceMatch[1] : "0",
-    requires_partner: !!partnerMatch,
-  };
-};
-
-export const AIAssistantSheet = ({  
+export const AIAssistantSheet = ({
   open,
   onOpenChange,
   onGenerateSuccess,
@@ -175,17 +140,18 @@ export const AIAssistantSheet = ({
       },
     });
 
-// Poprawiona konfiguracja LLM dla AIAssistantSheet
+    // Poprawiona konfiguracja LLM dla AIAssistantSheet
 
-registerLLMOperation("event-assistant", {
-    id: "generate-event",
-    name: "Generuj dane wydarzenia",
-    config: {
-      endpoint: "https://diesel-power-backend.onrender.com/api/chat",
-    },
-    prompt: {
-      system: "Jesteś asystentem tworzenia wydarzeń tanecznych. Generujesz dane wydarzeń w formacie JSON.",
-      user: `
+    registerLLMOperation("event-assistant", {
+      id: "generate-event",
+      name: "Generuj dane wydarzenia",
+      config: {
+        endpoint: "https://diesel-power-backend.onrender.com/api/chat",
+      },
+      prompt: {
+        system:
+          "Jesteś asystentem tworzenia wydarzeń tanecznych. Generujesz dane wydarzeń w formacie JSON.",
+        user: `
   Stwórz wydarzenie taneczne na podstawie opisu: {{prompt}}
   
   Wygeneruj JSON:
@@ -209,27 +175,27 @@ registerLLMOperation("event-assistant", {
   - Domyślny czas trwania to 2 godziny
   - Wszystkie wartości muszą być poprawne
   `,
-      responseFormat: "json",
-    },
-    inputMapping: (data) => ({
-      prompt: data.prompt,
-    }),
-    outputMapping: (llmResult, currentData) => ({
-      ...currentData,
-      ...llmResult,
-    }),
-    validation: (result) => {
-      return (
-        result &&
-        typeof result === "object" &&
-        result.title &&
-        result.event_category &&
-        result.event_date &&
-        result.start_time &&
-        result.end_time
-      );
-    },
-  });
+        responseFormat: "json",
+      },
+      inputMapping: (data) => ({
+        prompt: data.prompt,
+      }),
+      outputMapping: (llmResult, currentData) => ({
+        ...currentData,
+        ...llmResult,
+      }),
+      validation: (result) => {
+        return (
+          result &&
+          typeof result === "object" &&
+          result.title &&
+          result.event_category &&
+          result.event_date &&
+          result.start_time &&
+          result.end_time
+        );
+      },
+    });
   }, []);
 
   const handleGenerate = async () => {
@@ -257,23 +223,6 @@ registerLLMOperation("event-assistant", {
         stack: error.stack,
         prompt,
       });
-
-      // Fallback: generuj dane z promptu
-      if (error.message.includes("500")) {
-        const fallbackResult = generateFallbackEvent(prompt);
-        setEventPreview(fallbackResult);
-        setStep("preview");
-        toast.warning("Błąd serwera API (500). Wygenerowano dane tymczasowe.", {
-          description: "Sprawdź dane i spróbuj ponownie lub skontaktuj się z administratorem.",
-        });
-      } else {
-        toast.error("Błąd generowania", {
-          description:
-            error.message.includes("JSON")
-              ? "API zwróciło nieprawidłowy format. Spróbuj ponownie lub skontaktuj się z administratorem."
-              : error.message || "Nieznany błąd. Spróbuj opisać wydarzenie inaczej.",
-        });
-      }
     }
   };
 
@@ -337,7 +286,8 @@ registerLLMOperation("event-assistant", {
                     className="resize-none"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Opisz typ wydarzenia, poziom uczestników, termin, długość trwania i inne ważne szczegóły
+                    Opisz typ wydarzenia, poziom uczestników, termin, długość
+                    trwania i inne ważne szczegóły
                   </p>
                 </div>
 
@@ -350,7 +300,9 @@ registerLLMOperation("event-assistant", {
                         className="p-3 cursor-pointer hover:bg-accent transition-colors"
                         onClick={() => handleExampleClick(example.prompt)}
                       >
-                        <p className="text-sm font-medium mb-1">{example.title}</p>
+                        <p className="text-sm font-medium mb-1">
+                          {example.title}
+                        </p>
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {example.prompt}
                         </p>
@@ -400,7 +352,8 @@ registerLLMOperation("event-assistant", {
                         Lokalizację dodasz później
                       </p>
                       <p className="text-orange-800">
-                        AI nie generuje adresów - będziesz mógł je uzupełnić w kolejnym kroku
+                        AI nie generuje adresów - będziesz mógł je uzupełnić w
+                        kolejnym kroku
                       </p>
                     </div>
                   </div>
@@ -411,7 +364,9 @@ registerLLMOperation("event-assistant", {
                     <div className="flex items-start gap-2">
                       <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                       <div className="text-sm">
-                        <p className="font-medium text-red-900">Błąd generowania</p>
+                        <p className="font-medium text-red-900">
+                          Błąd generowania
+                        </p>
                         <p className="text-red-800">{llmError}</p>
                       </div>
                     </div>
@@ -446,52 +401,76 @@ registerLLMOperation("event-assistant", {
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="text-sm font-medium text-green-900">
-                      Wydarzenie wygenerowane {eventPreview.isFallback ? "tymczasowo" : "pomyślnie"}
+                      Wydarzenie wygenerowane pomyślnie
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Nazwa</Label>
-                    <p className="font-semibold text-lg">{eventPreview.title}</p>
+                    <Label className="text-sm text-muted-foreground">
+                      Nazwa
+                    </Label>
+                    <p className="font-semibold text-lg">
+                      {eventPreview.title}
+                    </p>
                   </div>
 
                   <div>
-                    <Label className="text-sm text-muted-foreground">Opis</Label>
-                    <p className="text-sm whitespace-pre-wrap">{eventPreview.description}</p>
+                    <Label className="text-sm text-muted-foreground">
+                      Opis
+                    </Label>
+                    <p className="text-sm whitespace-pre-wrap">
+                      {eventPreview.description}
+                    </p>
                   </div>
 
                   <Separator />
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Typ</Label>
+                      <Label className="text-sm text-muted-foreground">
+                        Typ
+                      </Label>
                       <Badge variant="secondary" className="mt-1">
                         {eventPreview.event_category === "lesson" && "Lekcja"}
-                        {eventPreview.event_category === "workshop" && "Warsztaty"}
-                        {eventPreview.event_category === "social" && "Potańcówka"}
-                        {eventPreview.event_category === "competition" && "Zawody"}
-                        {eventPreview.event_category === "performance" && "Występ"}
+                        {eventPreview.event_category === "workshop" &&
+                          "Warsztaty"}
+                        {eventPreview.event_category === "social" &&
+                          "Potańcówka"}
+                        {eventPreview.event_category === "competition" &&
+                          "Zawody"}
+                        {eventPreview.event_category === "performance" &&
+                          "Występ"}
                       </Badge>
                     </div>
 
                     {eventPreview.dance_style && (
                       <div>
-                        <Label className="text-sm text-muted-foreground">Styl tańca</Label>
-                        <p className="text-sm font-medium">{eventPreview.dance_style}</p>
+                        <Label className="text-sm text-muted-foreground">
+                          Styl tańca
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {eventPreview.dance_style}
+                        </p>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <Label className="text-sm text-muted-foreground">Termin</Label>
+                    <Label className="text-sm text-muted-foreground">
+                      Termin
+                    </Label>
                     <div className="space-y-1">
                       <p className="text-sm">
                         <Calendar className="w-3 h-3 inline mr-1" />
-                        {format(new Date(eventPreview.event_date), "EEEE, d MMMM yyyy", {
-                          locale: pl,
-                        })}
+                        {format(
+                          new Date(eventPreview.event_date),
+                          "EEEE, d MMMM yyyy",
+                          {
+                            locale: pl,
+                          }
+                        )}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         <Clock className="w-3 h-3 inline mr-1" />
@@ -505,19 +484,27 @@ registerLLMOperation("event-assistant", {
                   <div className="grid grid-cols-2 gap-4">
                     {eventPreview.skill_level_required && (
                       <div>
-                        <Label className="text-sm text-muted-foreground">Poziom</Label>
+                        <Label className="text-sm text-muted-foreground">
+                          Poziom
+                        </Label>
                         <p className="text-sm font-medium">
-                          {eventPreview.skill_level_required === "beginner" && "Początkujący"}
-                          {eventPreview.skill_level_required === "intermediate" && "Średniozaawansowany"}
-                          {eventPreview.skill_level_required === "advanced" && "Zaawansowany"}
-                          {eventPreview.skill_level_required === "professional" && "Profesjonalny"}
+                          {eventPreview.skill_level_required === "beginner" &&
+                            "Początkujący"}
+                          {eventPreview.skill_level_required ===
+                            "intermediate" && "Średniozaawansowany"}
+                          {eventPreview.skill_level_required === "advanced" &&
+                            "Zaawansowany"}
+                          {eventPreview.skill_level_required ===
+                            "professional" && "Profesjonalny"}
                         </p>
                       </div>
                     )}
 
                     {eventPreview.max_participants && (
                       <div>
-                        <Label className="text-sm text-muted-foreground">Limit miejsc</Label>
+                        <Label className="text-sm text-muted-foreground">
+                          Limit miejsc
+                        </Label>
                         <p className="text-sm font-medium">
                           <Users className="w-3 h-3 inline mr-1" />
                           {eventPreview.max_participants} osób
@@ -528,7 +515,9 @@ registerLLMOperation("event-assistant", {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Cena</Label>
+                      <Label className="text-sm text-muted-foreground">
+                        Cena
+                      </Label>
                       <p className="text-sm font-medium">
                         {eventPreview.price_amount === "0" ? (
                           <Badge variant="outline" className="text-green-600">
@@ -545,7 +534,9 @@ registerLLMOperation("event-assistant", {
 
                     {eventPreview.requires_partner && (
                       <div>
-                        <Label className="text-sm text-muted-foreground">Wymagania</Label>
+                        <Label className="text-sm text-muted-foreground">
+                          Wymagania
+                        </Label>
                         <Badge variant="outline">
                           <Users className="w-3 h-3 mr-1" />
                           Wymagany partner
@@ -563,7 +554,8 @@ registerLLMOperation("event-assistant", {
                         Pamiętaj o uzupełnieniu lokalizacji
                       </p>
                       <p className="text-blue-800">
-                        Po imporcie dodaj adres miejsca, w którym odbędzie się wydarzenie
+                        Po imporcie dodaj adres miejsca, w którym odbędzie się
+                        wydarzenie
                       </p>
                     </div>
                   </div>
