@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabaseClient } from "@/utility";
