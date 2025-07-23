@@ -28,6 +28,7 @@ import {
   Info,
   CheckCircle,
   Facebook,
+  Bot,
 } from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { toast } from "sonner";
 import { FacebookImportSheet } from "./components/FacebookImportSheet";
+import { AIAssistantSheet } from "./components/AIAssistantSheet";
 
 interface UserIdentity {
   id: string;
@@ -79,6 +81,7 @@ export const EventsCreate = () => {
   const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [showFacebookImport, setShowFacebookImport] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const {
     register,
@@ -159,6 +162,22 @@ export const EventsCreate = () => {
     
     toast.success("Dane zostały zaimportowane", {
       description: "Możesz teraz dokończyć tworzenie wydarzenia",
+    });
+  };
+
+  const handleAIAssistant = (generatedData: any) => {
+    // Wypełnij formularz danymi z AI
+    Object.keys(generatedData).forEach((key) => {
+      if (generatedData[key] !== undefined && generatedData[key] !== null) {
+        setValue(key as keyof EventFormData, generatedData[key]);
+      }
+    });
+    
+    // Przejdź do pierwszego kroku
+    setCurrentStep(1);
+    
+    toast.success("Dane zostały wygenerowane", {
+      description: "Uzupełnij lokalizację i dokończ tworzenie wydarzenia",
     });
   };
 
@@ -263,16 +282,28 @@ export const EventsCreate = () => {
             Anuluj
           </Button>
           <h1 className="font-semibold text-xl">Nowe wydarzenie</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFacebookImport(true)}
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-            title="Importuj z Facebooka"
-          >
-            <Facebook className="w-4 h-4 mr-2" />
-            Import
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAIAssistant(true)}
+              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+              title="Asystent AI"
+            >
+              <Bot className="w-4 h-4 mr-2" />
+              Asystent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFacebookImport(true)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              title="Importuj z Facebooka"
+            >
+              <Facebook className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -853,6 +884,13 @@ export const EventsCreate = () => {
         open={showFacebookImport}
         onOpenChange={setShowFacebookImport}
         onImportSuccess={handleFacebookImport}
+      />
+
+      {/* AI Assistant Sheet */}
+      <AIAssistantSheet
+        open={showAIAssistant}
+        onOpenChange={setShowAIAssistant}
+        onGenerateSuccess={handleAIAssistant}
       />
     </div>
   );
