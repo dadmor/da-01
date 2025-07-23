@@ -7,6 +7,7 @@ import { Button, Input, Textarea } from "@/components/ui";
 import { FlexBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
+import { SubPage } from "@/components/layout";
 
 export const DanceStylesCreate = () => {
   const { list } = useNavigation();
@@ -19,7 +20,7 @@ export const DanceStylesCreate = () => {
   } = useForm();
 
   return (
-    <>
+    <SubPage>
       <Button
         variant="outline"
         size="sm"
@@ -104,6 +105,6 @@ export const DanceStylesCreate = () => {
           </Form>
         </CardContent>
       </Card>
-    </>
+    </SubPage>
   );
 };  

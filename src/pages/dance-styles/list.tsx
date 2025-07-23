@@ -12,6 +12,7 @@ import { PaginationSwith } from "@/components/navigation";
 import { Lead } from "@/components/reader";
 import { useLoading } from "@/utility";
 import { Badge, Button, Input } from "@/components/ui";
+import { SubPage } from "@/components/layout";
 
 export const DanceStylesList = () => {
   const { create } = useNavigation();
@@ -37,7 +38,7 @@ export const DanceStylesList = () => {
   if (init) return init;
 
   return (
-    <>
+    <SubPage>
       <FlexBox>
         <Lead
           title="Style tańca"
@@ -98,6 +99,6 @@ export const DanceStylesList = () => {
         setCurrent={setCurrent}
         itemName="stylów"
       />
-    </>
+    </SubPage>
   );
 };
