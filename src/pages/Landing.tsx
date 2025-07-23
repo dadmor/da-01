@@ -15,13 +15,21 @@ import {
   Clock,
   CheckCircle2,
   BarChart,
+  Users,
+  Calendar,
+  Heart,
+  Trophy,
+  Music,
+  MapPin,
+  Star,
+  Award
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Bar, BarChart as RechartsBarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
 const LandingPage = () => {
   const [scrollY, setScrollY] = useState(0);
-  const [url, setUrl] = useState("");
+  const [email, setEmail] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,46 +40,44 @@ const LandingPage = () => {
 
   const features = [
     {
-      icon: Globe,
-      title: "ANALIZA STRONY",
-      desc: "AI skanuje i rozumie Twoją stronę, identyfikując kluczowe elementy i USP",
-      features: ["Analiza treści", "Wykrywanie CTA", "Optymalizacja SEO"],
-      color: "from-blue-500/20 to-blue-600/10",
-    },
-    {
-      icon: Layers,
-      title: "MULTI-CHANNEL",
-      desc: "Automatyczne kampanie na wszystkich głównych platformach",
-      features: ["Google Ads", "Meta Ads", "LinkedIn"],
+      icon: Calendar,
+      title: "WYDARZENIA TANECZNE",
+      desc: "Twórz i odkrywaj wydarzenia w klubach, szkołach tańca i plenerze",
+      features: ["Imprezy klubowe", "Warsztaty taneczne", "Eventy plenerowe"],
       color: "from-purple-500/20 to-purple-600/10",
     },
     {
-      icon: TrendingUp,
-      title: "OPTYMALIZACJA",
-      desc: "Machine learning dostosowuje strategię w czasie rzeczywistym",
-      features: ["A/B testing", "Bid management", "Audience targeting"],
-      color: "from-green-500/20 to-green-600/10",
+      icon: Trophy,
+      title: "SYSTEM GAMIFIKACJI",
+      desc: "Zdobywaj punkty, odznaki i awansuj w rankingu tancerzy",
+      features: ["Poziomy doświadczenia", "Wyzwania tygodniowe", "Nagrody społeczności"],
+      color: "from-amber-500/20 to-amber-600/10",
+    },
+    {
+      icon: Users,
+      title: "SPOŁECZNOŚĆ TRENERSKA",
+      desc: "Ucz się od najlepszych lub dziel się swoją wiedzą",
+      features: ["Lekcje indywidualne", "Grupy treningowe", "Mentoring online"],
+      color: "from-blue-500/20 to-blue-600/10",
     },
   ];
 
   const chartData = [
-    { day: 'Pon', value: 40, conversions: 245 },
-    { day: 'Wto', value: 65, conversions: 398 },
-    { day: 'Śro', value: 55, conversions: 332 },
-    { day: 'Czw', value: 75, conversions: 456 },
-    { day: 'Pią', value: 85, conversions: 512 },
-    { day: 'Sob', value: 95, conversions: 578 },
-    { day: 'Nie', value: 88, conversions: 526 }
+    { day: 'Pon', aktywni: 1240, wydarzenia: 45 },
+    { day: 'Wto', aktywni: 1650, wydarzenia: 62 },
+    { day: 'Śro', aktywni: 1480, wydarzenia: 51 },
+    { day: 'Czw', aktywni: 1890, wydarzenia: 78 },
+    { day: 'Pią', aktywni: 2450, wydarzenia: 125 },
+    { day: 'Sob', aktywni: 3200, wydarzenia: 186 },
+    { day: 'Nie', aktywni: 2800, wydarzenia: 142 }
   ];
 
-  // Typ dla danych wykresu
   interface ChartDataPoint {
     day: string;
-    value: number;
-    conversions: number;
+    aktywni: number;
+    wydarzenia: number;
   }
 
-  // Interfejs dla CustomTooltip
   interface CustomTooltipProps {
     active?: boolean;
     payload?: Array<{
@@ -81,17 +87,16 @@ const LandingPage = () => {
     label?: string;
   }
 
-  // Poprawiona funkcja CustomTooltip
   const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="font-medium">{label}</p>
           <p className="text-sm text-primary">
-            Konwersje: {payload[0].payload.conversions}
+            Aktywni: {payload[0].value}
           </p>
           <p className="text-sm text-muted-foreground">
-            Skuteczność: {payload[0].value}%
+            Wydarzenia: {payload[0].payload.wydarzenia}
           </p>
         </div>
       );
@@ -104,25 +109,26 @@ const LandingPage = () => {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg border-b">
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
-          <div className="text-2xl font-black tracking-tighter">
-            WISEADS<span className="text-primary">.</span>
+          <div className="text-2xl font-black tracking-tighter flex items-center gap-2">
+            <Music className="w-6 h-6 text-primary" />
+            PRIVATE DANCER<span className="text-primary">.</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <Button variant="ghost" className="text-sm font-medium">
               Funkcje
             </Button>
             <Button variant="ghost" className="text-sm font-medium">
-              Proces
+              Społeczność
             </Button>
             <Button variant="ghost" className="text-sm font-medium">
-              Cennik
+              Wydarzenia
             </Button>
             <Button
               variant="default"
               size="sm"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/register")}
             >
-              Rozpocznij <ArrowRight className="ml-2 h-4 w-4" />
+              Dołącz teraz <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -130,7 +136,6 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center pt-20">
-        {/* Grid pattern */}
         <div
           className="absolute inset-0 opacity-5 pointer-events-none"
           style={{
@@ -143,48 +148,48 @@ const LandingPage = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <Badge className="mb-8" variant="secondary">
-                <Sparkles className="mr-2 h-3 w-3" />
-                Powered by AI
+                <Heart className="mr-2 h-3 w-3" />
+                Dla pasjonatów tańca
               </Badge>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none mb-8">
-                AUTOMATYCZNE
+                TWOJA
                 <br />
-                <span className="text-primary">KAMPANIE</span>
+                <span className="text-primary">TANECZNA</span>
                 <br />
-                MARKETINGOWE
+                SPOŁECZNOŚĆ
               </h1>
 
               <p className="text-xl text-muted-foreground mb-10 max-w-xl">
-                Wprowadź adres URL, a nasza platforma automatycznie przygotuje,
-                uruchomi i będzie monitorować Twoją kampanię marketingową.
+                Odkryj wydarzenia, ucz się od najlepszych, znajdź idealnego partnera tanecznego. 
+                Dołącz do platformy, która łączy tancerzy z całej Polski.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-10">
                 <Input
-                  type="url"
-                  placeholder="https://twoja-strona.pl"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  type="email"
+                  placeholder="twoj@email.pl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 h-14 px-5 text-base"
                 />
                 <Button size="lg" className="h-14 px-8 font-bold text-base">
-                  Analizuj stronę <ArrowRight className="ml-2" />
+                  Rozpocznij przygodę <ArrowRight className="ml-2" />
                 </Button>
               </div>
 
               <div className="flex flex-wrap gap-8 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  <span>RODO Ready</span>
+                  <Users className="h-4 w-4" />
+                  <span>15k+ tancerzy</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  <span>3 min setup</span>
+                  <Calendar className="h-4 w-4" />
+                  <span>500+ wydarzeń/mies.</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  <span>97% skuteczność</span>
+                  <Heart className="h-4 w-4" />
+                  <span>System dopasowań</span>
                 </div>
               </div>
             </div>
@@ -196,56 +201,56 @@ const LandingPage = () => {
               />
               <Card className="relative border shadow-2xl">
                 <CardContent className="p-0">
-                  {/* Dashboard Header */}
+                  {/* App Preview Header */}
                   <div className="border-b px-6 py-4 bg-muted/30">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                        <Music className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-semibold">Private Dancer</span>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        dashboard.wiseads.pl
+                        twoj.profil
                       </span>
                     </div>
                   </div>
 
-                  {/* Dashboard Content */}
+                  {/* App Content Preview */}
                   <div className="p-8">
-                    <h3 className="text-lg font-semibold mb-6">
-                      Przegląd kampanii
+                    <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-amber-500" />
+                      Twój Dashboard
                     </h3>
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-3 gap-4 mb-8">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-primary">
-                          2,847
+                          42
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Konwersje
+                          Wydarzenia
                         </p>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          +34%
+                        <div className="text-2xl font-bold text-amber-500">
+                          Lvl 8
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          ROI
+                          Poziom
                         </p>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold">89k</div>
+                        <div className="text-2xl font-bold">127</div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Wyświetlenia
+                          Znajomi
                         </p>
                       </div>
                     </div>
 
-                    {/* Chart - Recharts */}
+                    {/* Activity Chart */}
                     <div className="bg-muted/50 rounded-lg p-4">
                       <h4 className="text-sm font-medium mb-4 text-muted-foreground">
-                        Skuteczność kampanii (%)
+                        Aktywność społeczności
                       </h4>
                       <ResponsiveContainer width="100%" height={200}>
                         <RechartsBarChart data={chartData}>
@@ -265,7 +270,7 @@ const LandingPage = () => {
                             cursor={{ fill: 'transparent' }}
                           />
                           <Bar 
-                            dataKey="value" 
+                            dataKey="aktywni" 
                             fill="hsl(var(--primary))"
                             radius={[8, 8, 0, 0]}
                           />
@@ -273,27 +278,39 @@ const LandingPage = () => {
                       </ResponsiveContainer>
                     </div>
 
-                    {/* Active Campaigns */}
+                    {/* Upcoming Events */}
                     <div className="mt-6 space-y-3">
                       <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="text-sm font-medium">
-                            Google Ads
-                          </span>
+                          <MapPin className="w-4 h-4 text-primary" />
+                          <div>
+                            <span className="text-sm font-medium">
+                              Salsa Night
+                            </span>
+                            <p className="text-xs text-muted-foreground">
+                              Klub Proxima, dziś 20:00
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          Aktywna
-                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          23 osoby
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="text-sm font-medium">Meta Ads</span>
+                          <Award className="w-4 h-4 text-amber-500" />
+                          <div>
+                            <span className="text-sm font-medium">
+                              Workshop: Bachata
+                            </span>
+                            <p className="text-xs text-muted-foreground">
+                              Studio Dance, sob 14:00
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          Aktywna
-                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          8 miejsc
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -310,13 +327,13 @@ const LandingPage = () => {
           <div className="text-center mb-20">
             <Badge className="mb-6" variant="outline">
               <Sparkles className="mr-2 h-3 w-3" />
-              AI-Powered Solutions
+              Wszystko w jednym miejscu
             </Badge>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6">
-              ARCHITEKTURA <span className="text-primary">SUKCESU</span>
+              PLATFORMA DLA <span className="text-primary">TANCERZY</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Trzy filary, które napędzają Twój sukces marketingowy
+              Kompleksowe rozwiązanie dla społeczności tanecznej
             </p>
           </div>
 
@@ -345,38 +362,55 @@ const LandingPage = () => {
               </Card>
             ))}
           </div>
+
+          {/* Partner Matching Feature */}
+          <Card className="mt-12 overflow-hidden">
+            <div className="bg-gradient-to-r from-pink-500/10 to-purple-500/10">
+              <CardContent className="p-12 text-center">
+                <Heart className="w-16 h-16 text-primary mx-auto mb-6" />
+                <h3 className="text-3xl font-bold mb-4">
+                  ZNAJDŹ IDEALNEGO <span className="text-primary">PARTNERA</span>
+                </h3>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Nasz inteligentny system dopasowań pomoże Ci znaleźć osobę o podobnym 
+                  poziomie umiejętności, preferencjach muzycznych i dostępności czasowej.
+                  Taniec we dwoje nigdy nie był prostszy!
+                </p>
+              </CardContent>
+            </div>
+          </Card>
         </div>
       </section>
 
-      {/* Process Section */}
+      {/* How It Works Section */}
       <section className="py-32">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl">
             <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-20">
-              PROCES <span className="text-primary">KREACJI</span>
+              JAK TO <span className="text-primary">DZIAŁA</span>
             </h2>
 
             <div className="space-y-16">
               {[
                 {
                   num: "01",
-                  title: "WPROWADŹ URL",
-                  desc: "Podaj adres swojej strony internetowej. Nasza AI przeanalizuje całą zawartość.",
+                  title: "STWÓRZ PROFIL",
+                  desc: "Opisz swoje umiejętności, style tańca i cele. System gamifikacji rozpocznie śledzenie Twoich postępów.",
                 },
                 {
                   num: "02",
-                  title: "ANALIZA AI",
-                  desc: "Sztuczna inteligencja skanuje treść, identyfikuje USP i określa grupę docelową.",
+                  title: "ODKRYWAJ WYDARZENIA",
+                  desc: "Przeglądaj imprezy w klubach, warsztaty w szkołach tańca i spontaniczne spotkania plenerowe.",
                 },
                 {
                   num: "03",
-                  title: "GENEROWANIE",
-                  desc: "Automatyczne tworzenie kampanii na Google Ads, Meta i LinkedIn.",
+                  title: "UCZ SIĘ I UCZ INNYCH",
+                  desc: "Dołącz do lekcji prowadzonych przez doświadczonych tancerzy lub sam zostań trenerem.",
                 },
                 {
                   num: "04",
-                  title: "MONITORING",
-                  desc: "Śledzenie wyników i optymalizacja w czasie rzeczywistym dla maksymalnego ROI.",
+                  title: "BUDUJ SPOŁECZNOŚĆ",
+                  desc: "Poznawaj nowych ludzi, znajduj partnerów tanecznych i rozwijaj swoją pasję razem z innymi.",
                 },
               ].map((step, index) => (
                 <div key={index} className="flex gap-8 items-start">
@@ -400,22 +434,22 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                icon: Target,
-                value: "97%",
-                label: "SKUTECZNOŚĆ KAMPANII",
-                desc: "Średnia skuteczność naszych kampanii",
+                icon: Users,
+                value: "15k+",
+                label: "AKTYWNYCH TANCERZY",
+                desc: "Rosnąca społeczność pasjonatów",
               },
               {
-                icon: Clock,
-                value: "24/7",
-                label: "MONITORING REAL-TIME",
-                desc: "Nieprzerwane śledzenie i optymalizacja",
+                icon: Calendar,
+                value: "500+",
+                label: "WYDARZEŃ MIESIĘCZNIE",
+                desc: "W całej Polsce",
               },
               {
-                icon: Zap,
-                value: "3MIN",
-                label: "CZAS DO STARTU",
-                desc: "Od URL do działającej kampanii",
+                icon: Star,
+                value: "4.8/5",
+                label: "OCENA APLIKACJI",
+                desc: "Od naszych użytkowników",
               },
             ].map((stat, index) => (
               <Card key={index} className="text-center border-0 shadow-sm">
@@ -441,31 +475,32 @@ const LandingPage = () => {
           <Card className="max-w-4xl mx-auto shadow-xl">
             <CardContent className="p-12 md:p-16 text-center">
               <h2 className="text-3xl md:text-5xl font-black mb-6">
-                ZACZNIJ <span className="text-primary">TERAZ</span>
+                ZATAŃCZ Z <span className="text-primary">NAMI</span>
               </h2>
               <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-                Dołącz do 1000+ firm, które zautomatyzowały swój marketing
+                Dołącz do największej społeczności tanecznej w Polsce.
+                Pierwsze 30 dni premium gratis!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                 <Button
                   size="lg"
                   className="px-8 py-6 text-lg"
-                  onClick={() => navigate("/campaign")}
+                  onClick={() => navigate("/register")}
                 >
-                  Wypróbuj za darmo
+                  Dołącz za darmo
                 </Button>
 
                 <Button
-                  onClick={() => navigate("/campaign")}
+                  onClick={() => navigate("/app-preview")}
                   size="lg"
                   variant="outline"
                   className="px-8 py-6 text-lg"
                 >
-                  Zobacz demo
+                  Zobacz aplikację
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Bez karty kredytowej • 14 dni trial • Anuluj w każdej chwili
+                Bez zobowiązań • Premium 30 dni gratis • Anuluj w każdej chwili
               </p>
             </CardContent>
           </Card>
@@ -476,11 +511,12 @@ const LandingPage = () => {
       <footer className="border-t">
         <div className="container mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-2xl font-black tracking-tighter">
-              WISEADS<span className="text-primary">.</span>
+            <div className="text-2xl font-black tracking-tighter flex items-center gap-2">
+              <Music className="w-6 h-6 text-primary" />
+              PRIVATE DANCER<span className="text-primary">.</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              © 2025 Wszystkie prawa zastrzeżone
+              © 2025 Private Dancer. Stworzone z pasją dla tańca.
             </div>
           </div>
         </div>

@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Info,
   CheckCircle,
+  Facebook,
 } from "lucide-react";
 import { Button, Input, Textarea } from "@/components/ui";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,7 @@ import { cn } from "@/utility";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { toast } from "sonner";
+import { FacebookImportSheet } from "./components/FacebookImportSheet";
 
 interface UserIdentity {
   id: string;
@@ -76,6 +78,7 @@ export const EventsCreate = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
   const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showFacebookImport, setShowFacebookImport] = useState(false);
 
   const {
     register,
@@ -142,6 +145,22 @@ export const EventsCreate = () => {
       description: "Pokaz taneczny",
     },
   ];
+
+  const handleFacebookImport = (importedData: any) => {
+    // Wypełnij formularz danymi z Facebooka
+    Object.keys(importedData).forEach((key) => {
+      if (importedData[key]) {
+        setValue(key as keyof EventFormData, importedData[key]);
+      }
+    });
+    
+    // Przejdź do pierwszego kroku
+    setCurrentStep(1);
+    
+    toast.success("Dane zostały zaimportowane", {
+      description: "Możesz teraz dokończyć tworzenie wydarzenia",
+    });
+  };
 
   const handleFormSubmit = async (data: any) => {
     if (!identity?.id) {
@@ -244,7 +263,16 @@ export const EventsCreate = () => {
             Anuluj
           </Button>
           <h1 className="font-semibold text-xl">Nowe wydarzenie</h1>
-          <div className="w-20" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFacebookImport(true)}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            title="Importuj z Facebooka"
+          >
+            <Facebook className="w-4 h-4 mr-2" />
+            Import
+          </Button>
         </div>
       </div>
 
@@ -819,6 +847,13 @@ export const EventsCreate = () => {
           )}
         </div>
       </form> 
+
+      {/* Facebook Import Sheet */}
+      <FacebookImportSheet
+        open={showFacebookImport}
+        onOpenChange={setShowFacebookImport}
+        onImportSuccess={handleFacebookImport}
+      />
     </div>
   );
 };
