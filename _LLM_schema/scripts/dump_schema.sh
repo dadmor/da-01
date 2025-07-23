@@ -74,14 +74,12 @@ GROUP BY table_name
 ORDER BY table_name;
 " | sed 's/+$//' | sed 's/^ *//' > "$OUTPUT_FILE"
 
-# Czyszczenie pliku
+
+
 sed -i '/create_statement/d' "$OUTPUT_FILE"
 sed -i '/^-\+$/d' "$OUTPUT_FILE"
 sed -i '/^([0-9]* row/d' "$OUTPUT_FILE"
 sed -i '/^$/d' "$OUTPUT_FILE"
-
-# Usuń nadmiarowe spacje (więcej niż 2 następujące po sobie)
-sed -i 's/  \+/ /g' "$OUTPUT_FILE"
 
 echo "✅ Gotowe! Struktura zapisana w: $OUTPUT_FILE"
 echo "📄 Podgląd:"
