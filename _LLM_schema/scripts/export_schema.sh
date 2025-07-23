@@ -28,7 +28,7 @@ WITH table_columns AS (
   SELECT 
     c.table_name,
     STRING_AGG(
-      c.column_name || ' ' ||
+      '- **' || c.column_name || '** ' ||
       CASE 
         WHEN c.data_type = 'character varying' THEN 'varchar'
         WHEN c.data_type = 'timestamp with time zone' THEN 'timestamp'
@@ -40,17 +40,6 @@ WITH table_columns AS (
         WHEN c.data_type = 'double precision' THEN 'float'
         ELSE c.data_type
       END ||
-      CASE WHEN c.is_nullable = 'NO' THEN ' NOT NULL' ELSE '' END ||
-      CASE 
-        WHEN c.column_default IS NOT NULL THEN 
-          ' DEFAULT ' || 
-          CASE 
-            WHEN c.column_default LIKE 'nextval%' THEN 'auto_increment'
-            WHEN c.column_default LIKE '%now()%' OR c.column_default LIKE '%CURRENT_TIMESTAMP%' THEN 'now()'
-            ELSE c.column_default
-          END
-        ELSE ''
-      END ||
       CASE 
         WHEN EXISTS (
           SELECT 1 FROM information_schema.table_constraints tc
@@ -58,7 +47,18 @@ WITH table_columns AS (
           WHERE tc.constraint_type = 'PRIMARY KEY' 
           AND tc.table_name = c.table_name 
           AND ccu.column_name = c.column_name
-        ) THEN ' PK'
+        ) THEN ' \`PK\`'
+        ELSE ''
+      END ||
+      CASE WHEN c.is_nullable = 'NO' THEN ' \`NOT NULL\`' ELSE '' END ||
+      CASE 
+        WHEN c.column_default IS NOT NULL THEN 
+          ' (default: ' || 
+          CASE 
+            WHEN c.column_default LIKE 'nextval%' THEN 'auto_increment'
+            WHEN c.column_default LIKE '%now()%' OR c.column_default LIKE '%CURRENT_TIMESTAMP%' THEN 'now()'
+            ELSE '\`' || c.column_default || '\`'
+          END || ')'
         ELSE ''
       END,
       E'\n'
@@ -89,13 +89,13 @@ foreign_keys AS (
   SELECT 
     tc.table_name,
     STRING_AGG(
-      kcu.column_name || ' → ' || ccu.table_name || '.' || ccu.column_name ||
+      '- FK: **' || kcu.column_name || '** → ' || ccu.table_name || '.' || ccu.column_name ||
       CASE 
-        WHEN rc.delete_rule != 'NO ACTION' THEN ' ON DELETE ' || rc.delete_rule
+        WHEN rc.delete_rule != 'NO ACTION' THEN ' \`ON DELETE ' || rc.delete_rule || '\`'
         ELSE ''
       END ||
       CASE 
-        WHEN rc.update_rule != 'NO ACTION' THEN ' ON UPDATE ' || rc.update_rule
+        WHEN rc.update_rule != 'NO ACTION' THEN ' \`ON UPDATE ' || rc.update_rule || '\`'
         ELSE ''
       END,
       E'\n'
@@ -113,7 +113,15 @@ indexes AS (
   SELECT 
     tablename,
     STRING_AGG(
-      'IDX: ' || indexname || ' (' || REPLACE(REPLACE(REPLACE(indexdef, 'CREATE INDEX ' || indexname || ' ON public.' || tablename || ' USING ', ''), 'CREATE UNIQUE INDEX ' || indexname || ' ON public.' || tablename || ' USING ', '[UNIQUE] '), '()', '') || ')',
+      '- IDX: \`' || indexname || '\` on (' || 
+      REGEXP_REPLACE(
+        REGEXP_REPLACE(indexdef, '.*\(([^)]+)\).*', '\1'),
+        ' COLLATE \"[^\"]+\"', '', 'g'
+      ) || ')' ||
+      CASE 
+        WHEN indexdef LIKE '%UNIQUE%' THEN ' \`UNIQUE\`'
+        ELSE ''
+      END,
       E'\n'
       ORDER BY indexname
     ) as idx_list
@@ -133,7 +141,7 @@ unique_constraints AS (
   SELECT 
     table_name,
     STRING_AGG(
-      'UNQ: ' || constraint_name || ' (' || column_list || ')',
+      '- UNQ: \`' || constraint_name || '\` on (' || column_list || ')',
       E'\n'
       ORDER BY constraint_name
     ) as unq_list
@@ -154,7 +162,7 @@ check_constraints AS (
   SELECT 
     tc.table_name,
     STRING_AGG(
-      'CHK: ' || tc.constraint_name || ' (' || cc.check_clause || ')',
+      '- CHK: \`' || tc.constraint_name || '\` (' || cc.check_clause || ')',
       E'\n'
       ORDER BY tc.constraint_name
     ) as chk_list
@@ -177,17 +185,17 @@ enum_types AS (
 ),
 tables_output AS (
   SELECT STRING_AGG(
-    '# ' || t.table_name || E'\n' || 
+    '## ' || t.table_name || E'\n\n' || 
     t.columns ||
     CASE 
-      WHEN f.fk_list IS NOT NULL 
-      THEN E'\n---\n' || f.fk_list 
-      ELSE '' 
+      WHEN f.fk_list IS NOT NULL OR i.idx_list IS NOT NULL OR u.unq_list IS NOT NULL OR ch.chk_list IS NOT NULL
+      THEN E'\n\n### Constraints & Indexes\n'
+      ELSE ''
     END ||
     CASE 
-      WHEN i.idx_list IS NOT NULL OR u.unq_list IS NOT NULL OR ch.chk_list IS NOT NULL
-      THEN E'\n---'
-      ELSE ''
+      WHEN f.fk_list IS NOT NULL 
+      THEN E'\n' || f.fk_list 
+      ELSE '' 
     END ||
     CASE 
       WHEN i.idx_list IS NOT NULL 
@@ -214,16 +222,18 @@ tables_output AS (
   LEFT JOIN check_constraints ch ON t.table_name = ch.table_name
 )
 SELECT 
+  '# Database Schema' || E'\n\n' ||
   CASE 
     WHEN EXISTS (SELECT 1 FROM enum_types) 
-    THEN '# ENUM TYPES' || E'\n' || 
+    THEN '## ENUM Types\n\n' || 
       (SELECT STRING_AGG(
-        enum_name || ': (' || enum_values || ')',
+        '- **' || enum_name || '**: \`' || enum_values || '\`',
         E'\n'
         ORDER BY enum_name
       ) FROM enum_types) || E'\n\n'
     ELSE ''
   END ||
+  '## Tables\n\n' ||
   COALESCE(tables_output.schema, '') as full_schema
 FROM tables_output;" > "$OUTPUT_FILE"
 
@@ -231,20 +241,14 @@ FROM tables_output;" > "$OUTPUT_FILE"
 if [ $? -eq 0 ]; then
     echo "✅ Schema zapisany do: $OUTPUT_FILE"
     echo ""
-    echo "📊 Legenda:"
+    echo "📊 Skróty używane w schemacie:"
     echo "  PK         - Primary Key"
-    echo "  →          - Foreign Key"
+    echo "  FK         - Foreign Key (→ wskazuje na tabelę docelową)"
     echo "  IDX        - Index"
     echo "  UNQ        - Unique Constraint"
     echo "  CHK        - Check Constraint"
-    echo "  DEFAULT    - Default Value"
-    echo "  ON DELETE  - Cascade rule for delete"
-    echo "  ON UPDATE  - Cascade rule for update"
-    echo ""
-    echo "🔍 Nowe funkcje:"
-    echo "  - Typy ENUM z wartościami"
-    echo "  - Reguły kaskadowe (CASCADE/RESTRICT/SET NULL)"
-    echo "  - Wartości domyślne kolumn"
+    echo "  NOT NULL   - Wymagana wartość"
+    echo "  default    - Wartość domyślna"
 else
     echo "❌ Błąd podczas pobierania schematu"
     exit 1
