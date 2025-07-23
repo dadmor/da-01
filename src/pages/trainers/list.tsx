@@ -139,16 +139,17 @@ export const TrainersList = () => {
           setTrainersStats(statsMap);
         }
 
-        // Pobierz zakresy cen dla każdego trenera
+        // Pobierz zakresy cen dla każdego trenera (tylko lekcje i warsztaty)
         console.log('Fetching price ranges for trainers...');
         
-        // Sprawdźmy najpierw czy są jakieś wydarzenia
+        // Sprawdźmy tylko lekcje i warsztaty
         const { data: allEvents, error: allEventsError } = await supabaseClient
           .from('events')
-          .select('id, organizer_id, price, status, title')
-          .in('organizer_id', trainerIds);
+          .select('id, organizer_id, price, status, title, event_type')
+          .in('organizer_id', trainerIds)
+          .in('event_type', ['lesson', 'workshop']); // TYLKO lekcje i warsztaty
           
-        console.log('All events for trainers:', allEvents);
+        console.log('Lesson and workshop events for trainers:', allEvents);
         
         const priceMap: Record<string, { min: number; max: number }> = {};
         
@@ -156,11 +157,11 @@ export const TrainersList = () => {
           // Grupuj wydarzenia po organizatorze
           trainerIds.forEach(trainerId => {
             const trainerEvents = allEvents.filter(e => e.organizer_id === trainerId);
-            console.log(`All events for trainer ${trainerId}:`, trainerEvents);
+            console.log(`Lessons/workshops for trainer ${trainerId}:`, trainerEvents);
             
             // Filtruj tylko te z ceną > 0
             const eventsWithPrice = trainerEvents.filter(e => e.price > 0);
-            console.log(`Events with price > 0 for trainer ${trainerId}:`, eventsWithPrice);
+            console.log(`Lessons/workshops with price > 0 for trainer ${trainerId}:`, eventsWithPrice);
             
             if (eventsWithPrice.length > 0) {
               const prices = eventsWithPrice.map(e => e.price);
@@ -262,7 +263,7 @@ export const TrainersList = () => {
       }
       return `${range.min}-${range.max} PLN`;
     }
-    return "Zapytaj o cenę";
+    return "Free";
   };
 
   // Filtruj trenerów po stylach (jeśli wybrany)
