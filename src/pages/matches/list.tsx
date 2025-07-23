@@ -1,300 +1,404 @@
-// src/pages/matches/list.tsx
-import { useList, useGetIdentity } from "@refinedev/core";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import { MessageCircle, MapPin, Music, Check, Clock } from "lucide-react";
-import { FlexBox, GridBox } from "@/components/shared";
-import { Lead } from "@/components/reader";
-import { useLoading } from "@/utility";
-import { Badge, Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui";
 import { useState, useEffect } from "react";
-import { useNavigation } from "@refinedev/core";
+import { useGetIdentity, useNavigation } from "@refinedev/core";
+import { supabaseClient } from "@/utility/supabaseClient";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge, Button } from "@/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  Heart, 
+  Users, 
+  MessageCircle, 
+  Calendar,
+  MapPin,
+  Sparkles,
+  ArrowRight,
+  UserPlus,
+  HeartHandshake
+} from "lucide-react";
+import { SubPage } from "@/components/layout";
+import { Lead } from "@/components/reader";
+import { FlexBox } from "@/components/shared";
+import { toast } from "sonner";
+
+interface UserProfile {
+  id: string;
+  name: string;
+  profile_photo_url?: string;
+  city?: string;
+  age?: number;
+  bio?: string;
+  is_verified?: boolean;
+  created_at?: string;
+}
+
+interface Like {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  created_at: string;
+  from_user?: UserProfile;
+  to_user?: UserProfile;
+}
 
 export const MatchesList = () => {
-  const [activeTab, setActiveTab] = useState("mutual");
-  const [currentDancerId, setCurrentDancerId] = useState<string | null>(null);
+  const { data: identity } = useGetIdentity<any>();
   const { show } = useNavigation();
-  const { data: identity } = useGetIdentity();
   
-  // Pobierz ID obecnego tancerza
-  const { data: dancerData } = useList({
-    resource: "dancers",
-    filters: [
-      {
-        field: "user_id",
-        operator: "eq",
-        value: identity?.id || "",
-      },
-    ],
-    queryOptions: {
-      enabled: !!identity?.id,
-    },
-  });
+  const [matches, setMatches] = useState<Like[]>([]);
+  const [myLikes, setMyLikes] = useState<Like[]>([]);
+  const [likesMe, setLikesMe] = useState<Like[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("matches");
 
   useEffect(() => {
-    if (dancerData?.data && dancerData.data.length > 0) {
-      setCurrentDancerId(dancerData.data[0].id);
+    if (identity?.id) {
+      fetchAllData();
     }
-  }, [dancerData]);
+  }, [identity?.id]);
 
-  // Pobierz polubienia które wysłałem
-  const { data: myLikes, isLoading: isLoadingMyLikes } = useList({
-    resource: "likes",
-    filters: currentDancerId ? [
-      {
-        field: "from_dancer_id",
-        operator: "eq",
-        value: currentDancerId,
-      },
-    ] : [],
-    meta: {
-      select: '*, to_dancer:dancers!to_dancer_id(*)'
-    },
-    pagination: {
-      mode: "off",
-    },
-    queryOptions: {
-      enabled: !!currentDancerId,
-    },
-  });
-
-  // Pobierz polubienia które otrzymałem
-  const { data: receivedLikes, isLoading: isLoadingReceived } = useList({
-    resource: "likes",
-    filters: currentDancerId ? [
-      {
-        field: "to_dancer_id",
-        operator: "eq",
-        value: currentDancerId,
-      },
-    ] : [],
-    meta: {
-      select: '*, from_dancer:dancers!from_dancer_id(*)'
-    },
-    pagination: {
-      mode: "off",
-    },
-    queryOptions: {
-      enabled: !!currentDancerId,
-    },
-  });
-
-  const isLoading = isLoadingMyLikes || isLoadingReceived;
-  const init = useLoading({ isLoading, isError: false });
-  if (init) return init;
-
-  // Kategoryzuj dopasowania
-  const categorizeMatches = () => {
-    const myLikesData = myLikes?.data || [];
-    const receivedLikesData = receivedLikes?.data || [];
+  const fetchAllData = async () => {
+    if (!identity?.id) return;
     
-    const mutual: any[] = [];
-    const pending: any[] = [];
-    const waiting: any[] = [];
+    setIsLoading(true);
+    try {
+      // Pobierz moje polubienia
+      const { data: myLikesData, error: myLikesError } = await supabaseClient
+        .from('likes')
+        .select(`
+          *,
+          to_user:v_public_dancers!likes_to_user_id_fkey (
+            id,
+            name,
+            profile_photo_url,
+            city,
+            age,
+            bio,
+            is_verified
+          )
+        `)
+        .eq('from_user_id', identity.id);
 
-    // Znajdź dopasowania (wzajemne polubienia)
-    myLikesData.forEach((myLike: any) => {
-      const mutualLike = receivedLikesData.find(
-        (received: any) => received.from_dancer_id === myLike.to_dancer_id
-      );
-      
-      if (mutualLike) {
-        mutual.push({
-          id: `${myLike.id}-${mutualLike.id}`,
-          matched_dancer: myLike.to_dancer,
-          matched_at: mutualLike.created_at > myLike.created_at ? mutualLike.created_at : myLike.created_at,
-          is_match: true,
-        });
-      } else {
-        // Czekam na odpowiedź
-        waiting.push({
-          id: myLike.id,
-          matched_dancer: myLike.to_dancer,
-          created_at: myLike.created_at,
-        });
-      }
-    });
+      if (myLikesError) throw myLikesError;
 
-    // Znajdź oczekujące polubienia (ktoś mnie polubił, ale ja jeszcze nie)
-    receivedLikesData.forEach((receivedLike: any) => {
-      const iLikedBack = myLikesData.find(
-        (myLike: any) => myLike.to_dancer_id === receivedLike.from_dancer_id
-      );
-      
-      if (!iLikedBack) {
-        pending.push({
-          id: receivedLike.id,
-          matched_dancer: receivedLike.from_dancer,
-          created_at: receivedLike.created_at,
-        });
-      }
-    });
+      // Pobierz kto mnie polubił
+      const { data: likesMeData, error: likesMeError } = await supabaseClient
+        .from('likes')
+        .select(`
+          *,
+          from_user:v_public_dancers!likes_from_user_id_fkey (
+            id,
+            name,
+            profile_photo_url,
+            city,
+            age,
+            bio,
+            is_verified
+          )
+        `)
+        .eq('to_user_id', identity.id);
 
-    return { mutual, pending, waiting };
+      if (likesMeError) throw likesMeError;
+
+      // Znajdź dopasowania (wzajemne polubienia)
+      const matchesData: Like[] = [];
+      const myLikesFiltered: Like[] = [];
+      const likesMeFiltered: Like[] = [];
+
+      // Sprawdź każde moje polubienie
+      myLikesData?.forEach(myLike => {
+        const isMatch = likesMeData?.some(
+          likeMe => likeMe.from_user_id === myLike.to_user_id
+        );
+        
+        if (isMatch) {
+          matchesData.push(myLike);
+        } else {
+          myLikesFiltered.push(myLike);
+        }
+      });
+
+      // Filtruj polubienia mnie (usuń te które są już w dopasowaniach)
+      likesMeData?.forEach(likeMe => {
+        const isMatch = matchesData.some(
+          match => match.to_user_id === likeMe.from_user_id
+        );
+        
+        if (!isMatch) {
+          likesMeFiltered.push(likeMe);
+        }
+      });
+
+      setMatches(matchesData);
+      setMyLikes(myLikesFiltered);
+      setLikesMe(likesMeFiltered);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error("Błąd pobierania danych");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const { mutual: mutualMatches, pending: pendingMatches, waiting: waitingMatches } = categorizeMatches();
+  const handleRemoveLike = async (likeId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('likes')
+        .delete()
+        .eq('id', likeId);
 
-  const renderMatchCard = (match: any, showActions = true) => {
-    const age = match.matched_dancer?.birth_date ? 
-      Math.floor((new Date().getTime() - new Date(match.matched_dancer.birth_date).getTime()) / 31557600000) : 
-      null;
+      if (error) throw error;
+
+      toast.success("Usunięto polubienie");
+      fetchAllData(); // Odśwież dane
+    } catch (error) {
+      console.error('Error removing like:', error);
+      toast.error("Błąd usuwania polubienia");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Dzisiaj";
+    if (diffDays === 1) return "Wczoraj";
+    if (diffDays < 7) return `${diffDays} dni temu`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} tyg. temu`;
+    return `${Math.floor(diffDays / 30)} mies. temu`;
+  };
+
+  const UserCard = ({ user, likeDate, likeId, showRemove = false }: { 
+    user: UserProfile | null, 
+    likeDate: string,
+    likeId: string,
+    showRemove?: boolean 
+  }) => {
+    if (!user) return null;
 
     return (
-      <Card key={match.id}>
-        <CardHeader>
-          <div className="relative">
-            <img
-              src={match.matched_dancer?.profile_photo_url || "/placeholder-dancer.jpg"}
-              alt={match.matched_dancer?.name}
-              className="w-full h-80 object-cover rounded-lg cursor-pointer"
-              onClick={() => show("dancers", match.matched_dancer?.id)}
-            />
-            {match.is_match && (
-              <Badge className="absolute top-2 right-2 bg-green-500">
-                <Check className="w-3 h-3 mr-1" />
-                Dopasowanie!
-              </Badge>
-            )}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-              <h3 className="text-xl font-bold text-white">
-                {match.matched_dancer?.name}
-                {age && <>, {age}</>}
+      <Card 
+        className="group hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
+        onClick={() => show("v_public_dancers", user.id)}
+      >
+        <div className="flex items-center gap-4 p-4">
+          <Avatar className="h-16 w-16 flex-shrink-0">
+            <AvatarImage src={user.profile_photo_url || undefined} />
+            <AvatarFallback className="text-lg bg-gradient-to-br from-pink-400 to-purple-400 text-white">
+              {user.name?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-base truncate">
+                {user.name}
               </h3>
-              <p className="text-white/90 flex items-center gap-2 text-sm">
-                <MapPin className="w-3 h-3" />
-                {match.matched_dancer?.city || "Nieznane"}
-              </p>
+              {user.is_verified && (
+                <Badge variant="secondary" className="text-xs">
+                  <Sparkles className="w-3 h-3" />
+                </Badge>
+              )}
             </div>
+            
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              {user.age && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {user.age} lat
+                </span>
+              )}
+              {user.city && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {user.city}
+                </span>
+              )}
+            </div>
+            
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatDate(likeDate)}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {match.matched_dancer?.bio || "Brak opisu"}
-          </p>
-          <div className="mt-3 text-xs text-muted-foreground">
-            {match.is_match ? 'Dopasowano' : 'Polubiono'}: {new Date(match.created_at || match.matched_at).toLocaleDateString("pl-PL")}
-          </div>
-        </CardContent>
-        {showActions && (
-          <CardFooter>
-            {match.is_match ? (
-              <Button className="w-full">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Napisz wiadomość
+          
+          <div className="flex gap-2">
+            {activeTab === "matches" && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toast.info("Funkcja czatu będzie dostępna wkrótce");
+                }}
+              >
+                <MessageCircle className="w-4 h-4" />
               </Button>
-            ) : activeTab === "waiting" ? (
-              <Badge variant="outline" className="w-full justify-center py-2">
-                <Clock className="w-3 h-3 mr-1" />
-                Oczekuje na odpowiedź
-              </Badge>
-            ) : null}
-          </CardFooter>
-        )}
+            )}
+            
+            {showRemove && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveLike(likeId);
+                }}
+              >
+                <Heart className="w-4 h-4 fill-current" />
+              </Button>
+            )}
+            
+            <Button
+              size="sm"
+              variant="ghost"
+              className="group-hover:bg-accent"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </Card>
     );
   };
 
+  const EmptyState = ({ icon: Icon, title, description }: {
+    icon: any,
+    title: string,
+    description: string
+  }) => (
+    <Card className="p-12 text-center border-dashed">
+      <Icon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
+    </Card>
+  );
+
+  if (isLoading) {
+    return (
+      <SubPage>
+        <div className="flex items-center justify-center p-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </SubPage>
+    );
+  }
+
   return (
-    <>
+    <SubPage>
       <FlexBox>
         <Lead
-          title="Dopasowania"
-          description="Zarządzaj swoimi dopasowaniami tanecznymi"
+          title="Polubienia i dopasowania"
+          description="Zarządzaj swoimi połączeniami z innymi tancerzami"
         />
       </FlexBox>
 
+      <div className="flex gap-4 mb-6">
+        <Badge variant="outline" className="text-sm">
+          <HeartHandshake className="w-3 h-3 mr-1" />
+          {matches.length} dopasowań
+        </Badge>
+        <Badge variant="outline" className="text-sm">
+          <Heart className="w-3 h-3 mr-1" />
+          {myLikes.length} polubionych
+        </Badge>
+        <Badge variant="outline" className="text-sm">
+          <UserPlus className="w-3 h-3 mr-1" />
+          {likesMe.length} polubień
+        </Badge>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="mutual">
-            Dopasowania ({mutualMatches.length})
+          <TabsTrigger value="matches" className="gap-2">
+            <HeartHandshake className="w-4 h-4" />
+            Dopasowania ({matches.length})
           </TabsTrigger>
-          <TabsTrigger value="pending">
-            Polubili Cię ({pendingMatches.length})
+          <TabsTrigger value="my-likes" className="gap-2">
+            <Heart className="w-4 h-4" />
+            Moje polubienia ({myLikes.length})
           </TabsTrigger>
-          <TabsTrigger value="waiting">
-            Czekające ({waitingMatches.length})
+          <TabsTrigger value="likes-me" className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            Polubili mnie ({likesMe.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="mutual">
-          {mutualMatches.length > 0 ? (
-            <GridBox>
-              {mutualMatches.map((match: any) => renderMatchCard(match))}
-            </GridBox>
-          ) : (
-            <Card className="max-w-md mx-auto">
-              <CardContent className="text-center py-12">
-                <p className="text-muted-foreground">
-                  Jeszcze nie masz żadnych dopasowań
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Kontynuuj przeglądanie profili!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="pending">
-          {pendingMatches.length > 0 ? (
-            <div className="max-w-md mx-auto space-y-4">
-              {pendingMatches.map((match: any) => (
-                <Card key={match.id}>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <img
-                        src={match.matched_dancer?.profile_photo_url || "/placeholder-dancer.jpg"}
-                        alt={match.matched_dancer?.name}
-                        className="w-24 h-24 rounded-full mx-auto mb-4 object-cover cursor-pointer"
-                        onClick={() => show("dancers", match.matched_dancer?.id)}
-                      />
-                      <h3 className="font-semibold text-lg">{match.matched_dancer?.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        polubił(a) Cię {new Date(match.created_at).toLocaleDateString("pl-PL")}
-                      </p>
-                      <Button 
-                        className="w-full"
-                        onClick={() => show("dancers", match.matched_dancer?.id)}
-                      >
-                        Zobacz profil
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+        <TabsContent value="matches" className="mt-6 space-y-3">
+          {matches.length > 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-4">
+                🎉 Gratulacje! Masz wzajemne dopasowania. Możesz rozpocząć rozmowę.
+              </p>
+              {matches.map((match) => (
+                <UserCard 
+                  key={match.id} 
+                  user={match.to_user as UserProfile} 
+                  likeDate={match.created_at}
+                  likeId={match.id}
+                />
               ))}
-            </div>
+            </>
           ) : (
-            <Card className="max-w-md mx-auto">
-              <CardContent className="text-center py-12">
-                <p className="text-muted-foreground">
-                  Nikt jeszcze Cię nie polubił
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={HeartHandshake}
+              title="Brak dopasowań"
+              description="Gdy ktoś kogo polubiłeś również Cię polubi, pojawi się tutaj jako dopasowanie"
+            />
           )}
         </TabsContent>
 
-        <TabsContent value="waiting">
-          {waitingMatches.length > 0 ? (
-            <GridBox>
-              {waitingMatches.map((match: any) => renderMatchCard(match))}
-            </GridBox>
+        <TabsContent value="my-likes" className="mt-6 space-y-3">
+          {myLikes.length > 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-4">
+                Profile które polubiłeś. Czekaj aż odwzajemnią polubienie!
+              </p>
+              {myLikes.map((like) => (
+                <UserCard 
+                  key={like.id} 
+                  user={like.to_user as UserProfile} 
+                  likeDate={like.created_at}
+                  likeId={like.id}
+                  showRemove={true}
+                />
+              ))}
+            </>
           ) : (
-            <Card className="max-w-md mx-auto">
-              <CardContent className="text-center py-12">
-                <p className="text-muted-foreground">
-                  Nie czekasz na żadne odpowiedzi
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Heart}
+              title="Brak polubionych profili"
+              description="Przeglądaj profile i polub tych, którzy Ci się spodobają"
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="likes-me" className="mt-6 space-y-3">
+          {likesMe.length > 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-4">
+                Te osoby czekają na Twoje polubienie. Polub je, aby utworzyć dopasowanie!
+              </p>
+              {likesMe.map((like) => (
+                <UserCard 
+                  key={like.id} 
+                  user={like.from_user as UserProfile} 
+                  likeDate={like.created_at}
+                  likeId={like.id}
+                />
+              ))}
+            </>
+          ) : (
+            <EmptyState
+              icon={UserPlus}
+              title="Nikt jeszcze Cię nie polubił"
+              description="Uzupełnij swój profil i dodaj zdjęcia, aby zwiększyć szanse na polubienia"
+            />
           )}
         </TabsContent>
       </Tabs>
-    </>
+    </SubPage>
   );
 };

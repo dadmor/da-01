@@ -13,6 +13,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  Camera,
 } from "lucide-react";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
@@ -20,6 +21,7 @@ import { Badge, Button, Separator } from "@/components/ui";
 import { SubPage } from "@/components/layout";
 import { supabaseClient } from "@/utility/supabaseClient";
 import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserRecord {
   id: string;
@@ -160,39 +162,57 @@ export const ProfileShow = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium">Imię i nazwisko</p>
-                  <p className="text-lg">{userData.name}</p>
+              {/* Zdjęcie profilowe i podstawowe dane */}
+              <div className="flex items-start gap-6">
+                <div className="flex-shrink-0">
+                  <Avatar className="h-32 w-32">
+                    <AvatarImage src={userData.profile_photo_url || undefined} />
+                    <AvatarFallback className="text-2xl">
+                      {userData.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!userData.profile_photo_url && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      <Camera className="w-3 h-3 inline mr-1" />
+                      Brak zdjęcia
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium">Email</p>
-                  <p className="text-lg flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    {userData.email}
-                  </p>
+                <div className="flex-1 grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Imię i nazwisko</p>
+                    <p className="text-lg">{userData.name}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium">Email</p>
+                    <p className="text-lg flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {userData.email}
+                    </p>
+                  </div>
+
+                  {userData.birth_date && age && (
+                    <div>
+                      <p className="text-sm font-medium">Wiek</p>
+                      <p className="text-lg flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        {age} lat
+                      </p>
+                    </div>
+                  )}
+
+                  {userData.height && (
+                    <div>
+                      <p className="text-sm font-medium">Wzrost</p>
+                      <p className="text-lg flex items-center gap-2">
+                        <Ruler className="w-4 h-4" />
+                        {userData.height} cm
+                      </p>
+                    </div>
+                  )}
                 </div>
-
-                {userData.birth_date && age && (
-                  <div>
-                    <p className="text-sm font-medium">Wiek</p>
-                    <p className="text-lg flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {age} lat
-                    </p>
-                  </div>
-                )}
-
-                {userData.height && (
-                  <div>
-                    <p className="text-sm font-medium">Wzrost</p>
-                    <p className="text-lg flex items-center gap-2">
-                      <Ruler className="w-4 h-4" />
-                      {userData.height} cm
-                    </p>
-                  </div>
-                )}
               </div>
 
               {userData.bio && (

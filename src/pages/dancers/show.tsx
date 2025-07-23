@@ -11,11 +11,35 @@ import {
   Music,
   GraduationCap,
 } from "lucide-react";
-import { FlexBox, GridBox } from "@/components/shared";
-import { Lead } from "@/components/reader";
+import { GridBox } from "@/components/shared";
 import { Badge, Button, Separator } from "@/components/ui";
 import { useLoading } from "@/utility";
 import { SubPage } from "@/components/layout";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LikeButton } from "./LikeButton";
+
+interface DanceStyle {
+  style_id: string;
+  style_name: string;
+  skill_level: string;
+  is_teaching: boolean;
+}
+
+interface Dancer {
+  id: string;
+  name: string;
+  bio?: string;
+  age?: number;
+  height?: number;
+  profile_photo_url?: string;
+  location_lat?: number;
+  location_lng?: number;
+  city?: string;
+  is_trainer: boolean;
+  is_verified: boolean;
+  created_at: string;
+  dance_styles?: DanceStyle[];
+}
 
 export const DancersShow = () => {
   const { queryResult } = useShow({
@@ -24,7 +48,7 @@ export const DancersShow = () => {
   const { list } = useNavigation();
 
   const { data, isLoading, isError } = queryResult;
-  const record = data?.data;
+  const record = data?.data as Dancer;
 
   const init = useLoading({ isLoading, isError });
   if (init) return init;
@@ -42,9 +66,19 @@ export const DancersShow = () => {
     );
   }
 
+  // Funkcja do określenia poziomu umiejętności po polsku
+  const getSkillLevelLabel = (level: string) => {
+    const labels: Record<string, string> = {
+      beginner: "Początkujący",
+      intermediate: "Średniozaawansowany",
+      advanced: "Zaawansowany",
+      professional: "Profesjonalny",
+    };
+    return labels[level] || level;
+  };
+
   return (
     <SubPage>
-      DANCERS REDUNDAND PROFILE
       <Button
         variant="outline"
         size="sm"
@@ -54,90 +88,86 @@ export const DancersShow = () => {
         Wróć do listy
       </Button>
 
-      <FlexBox>
-        <Lead
-          title={
-            <FlexBox variant="start" className="gap-2">
-              {record.name}
-              {record.is_verified && (
-                <><Award className="w-5 h-5 text-blue-500" />
-                Zweryfikowany profil</>
-              )}
-            </FlexBox>
-          }
-          description={`Profil tancerza`}
-        />
-      </FlexBox>
+      {/* Nagłówek z avatarem i podstawowymi informacjami */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <Avatar className="h-24 w-24 flex-shrink-0">
+              <AvatarImage src={record.profile_photo_url || undefined} />
+              <AvatarFallback className="text-2xl">
+                {record.name?.charAt(0)?.toUpperCase() || "T"}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 space-y-3">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2 flex-wrap">
+                  {record.name}
+                  {record.is_verified && (
+                    <Badge variant="secondary">
+                      <Award className="w-4 h-4 mr-1" />
+                      Zweryfikowany
+                    </Badge>
+                  )}
+                </h1>
+
+                <div className="flex flex-wrap items-center gap-4 text-muted-foreground mt-2">
+                  {record.age && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {record.age} lat
+                    </span>
+                  )}
+                  {record.height && (
+                    <span className="flex items-center gap-1">
+                      <Ruler className="w-4 h-4" />
+                      {record.height} cm
+                    </span>
+                  )}
+                  {record.city && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {record.city}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {record.is_trainer && (
+                  <Badge variant="secondary">
+                    <GraduationCap className="w-4 h-4 mr-1" />
+                    Trener
+                  </Badge>
+                )}
+              </div>
+
+              {/* Przycisk polubienia */}
+              <LikeButton targetUserId={record.id} variant="default" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <GridBox>
         {/* Główne informacje */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Informacje podstawowe
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {record.age && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Wiek</p>
-                      <p className="text-sm text-muted-foreground">{record.age} lat</p>
-                    </div>
-                  </div>
-                )}
-
-                {record.height && (
-                  <div className="flex items-center gap-2">
-                    <Ruler className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Wzrost</p>
-                      <p className="text-sm text-muted-foreground">{record.height} cm</p>
-                    </div>
-                  </div>
-                )}
-
-                {record.city && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Miasto</p>
-                      <p className="text-sm text-muted-foreground">{record.city}</p>
-                    </div>
-                  </div>
-                )}
-
-                {record.is_trainer && (
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Status</p>
-                      <Badge variant="secondary">Trener</Badge>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {record.bio && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium mb-2">O mnie</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {record.bio}
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {/* O mnie */}
+          {record.bio && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />O mnie
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">{record.bio}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Style taneczne */}
-          {record.dance_styles?.length > 0 && (
+          {record.dance_styles && record.dance_styles.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -147,15 +177,15 @@ export const DancersShow = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {record.dance_styles.map((style: any, index: number) => (
+                  {record.dance_styles.map((style, index) => (
                     <div
                       key={index}
                       className="border rounded-lg p-3 flex items-center justify-between"
                     >
                       <div>
                         <p className="font-medium">{style.style_name}</p>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          Poziom: {style.skill_level}
+                        <p className="text-sm text-muted-foreground">
+                          Poziom: {getSkillLevelLabel(style.skill_level)}
                         </p>
                       </div>
                       {style.is_teaching && (
@@ -211,6 +241,26 @@ export const DancersShow = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Akcje */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Akcje</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <LikeButton
+                targetUserId={record.id}
+                variant="default"
+                className="w-full"
+              />
+              <Button variant="outline" className="w-full">
+                Wyślij wiadomość
+              </Button>
+              <Button variant="outline" className="w-full">
+                Zgłoś profil
+              </Button>
             </CardContent>
           </Card>
         </div>

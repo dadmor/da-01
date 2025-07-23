@@ -9,14 +9,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { User, MapPin, Camera, X } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { Button, Input, Textarea, Switch } from "@/components/ui";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
 import { SubPage } from "@/components/layout";
 import { supabaseClient } from "@/utility/supabaseClient";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserRecord {
   id: string;
@@ -48,6 +49,9 @@ export const ProfileEdit = () => {
   const [userData, setUserData] = useState<UserRecord | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { mutate: updateUser } = useUpdate();
 
@@ -78,11 +82,125 @@ export const ProfileEdit = () => {
           } else if (data) {
             setUserData(data);
             reset(data);
+            if (data.profile_photo_url) {
+              setPhotoPreview(data.profile_photo_url);
+            }
           }
           setIsLoadingUser(false);
         });
     }
   }, [identity?.id, reset]);
+
+  // Funkcja do przesyłania zdjęcia
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !identity?.id) return;
+
+    // Walidacja rozmiaru pliku (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Plik jest za duży. Maksymalny rozmiar to 5MB.');
+      return;
+    }
+
+    // Walidacja typu pliku
+    if (!file.type.startsWith('image/')) {
+      alert('Proszę wybrać plik graficzny.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    try {
+      // Usuń stare zdjęcie jeśli istnieje
+      if (userData?.profile_photo_url) {
+        const oldPhotoPath = userData.profile_photo_url.split('/').pop();
+        if (oldPhotoPath) {
+          await supabaseClient.storage
+            .from('profile-photos')
+            .remove([`${identity.id}/${oldPhotoPath}`]);
+        }
+      }
+
+      // Generuj unikalną nazwę pliku
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${identity.id}/${fileName}`;
+
+      // Prześlij nowe zdjęcie
+      const { error: uploadError, data } = await supabaseClient.storage
+        .from('profile-photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Pobierz publiczny URL
+      const { data: { publicUrl } } = supabaseClient.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      // Ustaw podgląd
+      setPhotoPreview(publicUrl);
+      setValue('profile_photo_url', publicUrl);
+
+      // Zaktualizuj w bazie danych od razu
+      const { error: updateError } = await supabaseClient
+        .from('users')
+        .update({ profile_photo_url: publicUrl })
+        .eq('id', identity.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Nie udało się przesłać zdjęcia. Spróbuj ponownie.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // Funkcja do usuwania zdjęcia
+  const handlePhotoRemove = async () => {
+    if (!identity?.id || !userData?.profile_photo_url) return;
+
+    if (!confirm('Czy na pewno chcesz usunąć zdjęcie profilowe?')) return;
+
+    setIsUploadingPhoto(true);
+
+    try {
+      // Usuń z storage
+      const photoPath = userData.profile_photo_url.split('/').pop();
+      if (photoPath) {
+        await supabaseClient.storage
+          .from('profile-photos')
+          .remove([`${identity.id}/${photoPath}`]);
+      }
+
+      // Zaktualizuj w bazie danych
+      const { error } = await supabaseClient
+        .from('users')
+        .update({ profile_photo_url: null })
+        .eq('id', identity.id);
+
+      if (error) throw error;
+
+      // Wyczyść podgląd
+      setPhotoPreview(null);
+      setValue('profile_photo_url', null);
+
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      alert('Nie udało się usunąć zdjęcia. Spróbuj ponownie.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const onFinish = (values: any) => {
     if (!identity?.id) return;
@@ -183,6 +301,57 @@ export const ProfileEdit = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Sekcja zdjęcia profilowego */}
+              <div className="mb-6">
+                <FormControl label="Zdjęcie profilowe">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={photoPreview || undefined} />
+                      <AvatarFallback>
+                        {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingPhoto}
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        {isUploadingPhoto ? 'Przesyłanie...' : 'Zmień zdjęcie'}
+                      </Button>
+                      
+                      {photoPreview && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePhotoRemove}
+                          disabled={isUploadingPhoto}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Usuń
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Dozwolone formaty: JPG, PNG, GIF. Maksymalny rozmiar: 5MB
+                  </p>
+                </FormControl>
+              </div>
+
               <GridBox variant="1-2-2">
                 <FormControl
                   label="Imię i nazwisko"
