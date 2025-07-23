@@ -214,7 +214,7 @@ export const EventsCreate = () => {
           ? parseInt(data.max_participants)
           : null,
         min_participants: 1,
-        participant_count: 0,
+        // participant_count: 0, // USUNIĘTE - tej kolumny już nie ma!
         skill_level_min: data.skill_level_required || null,
         skill_level_max: data.skill_level_required || null,
         requires_partner: data.requires_partner,

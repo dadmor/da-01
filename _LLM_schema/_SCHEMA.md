@@ -88,7 +88,6 @@
 - **registration_url** text
 - **min_participants** int (default: `1`)
 - **max_participants** int
-- **participant_count** int (default: `0`)
 - **skill_level_min** text
 - **skill_level_max** text
 - **price** numeric (default: `0`)

@@ -1,35 +1,8 @@
 # DATABASE TRIGGERS AND FUNCTIONS
-Generated: 2025-07-23 20:31:48.414679+00
+Generated: 2025-07-23 21:01:51.652892+00
 Filter: Only triggers with prefix "trg_" and functions with prefix "fn_"
 
 ## TRIGGERS (prefix: trg_)
-
-### Trigger: trg_update_participant_count
-- **Table**: event_participants
-- **Timing**: AFTER UPDATE
-- **Orientation**: ROW
-
-```sql
-CREATE TRIGGER trg_update_participant_count AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH ROW EXECUTE FUNCTION fn_update_event_participant_count()
-```
-
-### Trigger: trg_update_participant_count
-- **Table**: event_participants
-- **Timing**: AFTER INSERT
-- **Orientation**: ROW
-
-```sql
-CREATE TRIGGER trg_update_participant_count AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH ROW EXECUTE FUNCTION fn_update_event_participant_count()
-```
-
-### Trigger: trg_update_participant_count
-- **Table**: event_participants
-- **Timing**: AFTER DELETE
-- **Orientation**: ROW
-
-```sql
-CREATE TRIGGER trg_update_participant_count AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH ROW EXECUTE FUNCTION fn_update_event_participant_count()
-```
 
 ### Trigger: trg_events_updated_at
 - **Table**: events
@@ -287,28 +260,6 @@ BEGIN
         AND user_id != NEW.sender_id;
     
     RETURN NEW;
-END;
-$function$
-
-```
-
-### Function: fn_update_event_participant_count()
-```sql
-CREATE OR REPLACE FUNCTION public.fn_update_event_participant_count()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    UPDATE events 
-    SET participant_count = (
-        SELECT COUNT(*) 
-        FROM event_participants 
-        WHERE event_id = COALESCE(NEW.event_id, OLD.event_id)
-        AND status IN ('registered', 'confirmed', 'attended')
-    )
-    WHERE id = COALESCE(NEW.event_id, OLD.event_id);
-    
-    RETURN COALESCE(NEW, OLD);
 END;
 $function$
 

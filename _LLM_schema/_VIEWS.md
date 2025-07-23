@@ -1,5 +1,5 @@
 # DATABASE VIEWS
-Generated: 2025-07-23 20:31:54.483913+00
+Generated: 2025-07-23 21:01:56.390415+00
 
 # geography_columns [VIEW]
 f_table_catalog name
@@ -116,7 +116,7 @@ website_url text
 registration_url text
 min_participants int
 max_participants int
-participant_count int
+participant_count bigint
 skill_level_min text
 skill_level_max text
 price numeric
@@ -172,7 +172,7 @@ VIEW: v_events_detailed
     e.registration_url,
     e.min_participants,
     e.max_participants,
-    e.participant_count,
+    COALESCE(count(DISTINCT ep.user_id) FILTER (WHERE ep.status = ANY (ARRAY['registered'::text, 'confirmed'::text, 'attended'::text])), 0::bigint) AS participant_count,
     e.skill_level_min,
     e.skill_level_max,
     e.price,
@@ -200,6 +200,96 @@ VIEW: v_events_detailed
      LEFT JOIN event_participants ep ON e.id = ep.event_id
      LEFT JOIN reviews r ON e.id = r.event_id AND r.is_visible = true
   GROUP BY e.id, u.id, ds.id;
+```
+
+# v_events_with_counts [VIEW]
+id uuid
+organizer_id uuid
+title text
+description text
+event_type text
+dance_style_id uuid
+start_at timestamp
+end_at timestamp
+is_recurring bool
+recurrence_rule jsonb
+parent_event_id uuid
+location_type text
+location_name text
+address text
+city text
+location_lat numeric
+location_lng numeric
+online_platform text
+online_link text
+website_url text
+registration_url text
+min_participants int
+max_participants int
+skill_level_min text
+skill_level_max text
+price numeric
+currency text
+early_bird_price numeric
+early_bird_deadline date
+requires_partner bool
+age_min int
+age_max int
+status text
+visibility text
+created_at timestamp
+updated_at timestamp
+participant_count bigint
+waitlist_count bigint
+---
+📊 Dependencies:
+TABLE: event_participants
+TABLE: events
+VIEW: v_events_with_counts
+---
+📄 Definition:
+```sql
+ SELECT e.id,
+    e.organizer_id,
+    e.title,
+    e.description,
+    e.event_type,
+    e.dance_style_id,
+    e.start_at,
+    e.end_at,
+    e.is_recurring,
+    e.recurrence_rule,
+    e.parent_event_id,
+    e.location_type,
+    e.location_name,
+    e.address,
+    e.city,
+    e.location_lat,
+    e.location_lng,
+    e.online_platform,
+    e.online_link,
+    e.website_url,
+    e.registration_url,
+    e.min_participants,
+    e.max_participants,
+    e.skill_level_min,
+    e.skill_level_max,
+    e.price,
+    e.currency,
+    e.early_bird_price,
+    e.early_bird_deadline,
+    e.requires_partner,
+    e.age_min,
+    e.age_max,
+    e.status,
+    e.visibility,
+    e.created_at,
+    e.updated_at,
+    COALESCE(count(ep.user_id) FILTER (WHERE ep.status = ANY (ARRAY['registered'::text, 'confirmed'::text, 'attended'::text])), 0::bigint) AS participant_count,
+    COALESCE(count(ep.user_id) FILTER (WHERE ep.status = 'waitlist'::text), 0::bigint) AS waitlist_count
+   FROM events e
+     LEFT JOIN event_participants ep ON e.id = ep.event_id
+  GROUP BY e.id;
 ```
 
 # v_matches [VIEW]
@@ -313,13 +403,18 @@ VIEW: v_trainer_stats
     u.name,
     count(DISTINCT e.id) AS total_events,
     count(DISTINCT ep.user_id) AS unique_students,
-    avg(e.participant_count)::numeric(5,2) AS avg_participants,
+    avg(COALESCE(event_counts.participant_count, 0::bigint))::numeric(5,2) AS avg_participants,
     sum(ep.paid_amount) AS total_revenue,
     count(DISTINCT r.id) AS review_count,
     avg(r.rating_overall)::numeric(3,2) AS average_rating,
     array_agg(DISTINCT ds.name) FILTER (WHERE uds.is_teaching = true) AS teaching_styles
    FROM users u
      LEFT JOIN events e ON u.id = e.organizer_id AND e.status = 'completed'::text
+     LEFT JOIN ( SELECT event_participants.event_id,
+            count(*) AS participant_count
+           FROM event_participants
+          WHERE event_participants.status = ANY (ARRAY['registered'::text, 'confirmed'::text, 'attended'::text])
+          GROUP BY event_participants.event_id) event_counts ON e.id = event_counts.event_id
      LEFT JOIN event_participants ep ON e.id = ep.event_id AND ep.status = 'attended'::text
      LEFT JOIN reviews r ON u.id = r.reviewed_user_id AND r.is_visible = true
      LEFT JOIN user_dance_styles uds ON u.id = uds.user_id AND uds.is_teaching = true

@@ -149,25 +149,56 @@ const record = data?.data as Event;
 const fetchParticipants = async () => {
   if (!record?.id) return;
   
+  console.log('Fetching participants for event:', record.id);
   setLoadingParticipants(true);
+  
   try {
-    const { data, error } = await supabaseClient
+    // Najpierw pobierz samych uczestników
+    const { data: participantsData, error } = await supabaseClient
       .from('event_participants')
-      .select(`
-        *,
-        user:users(id, name, profile_photo_url, is_verified)
-      `)
+      .select('*')
       .eq('event_id', record.id)
       .in('status', ['registered', 'confirmed', 'attended'])
       .order('registered_at', { ascending: false });
 
-    if (error) throw error;
-    
-    setParticipants(data || []);
-    // Ustaw participantCount na podstawie faktycznej liczby uczestników
-    setParticipantCount(data?.length || 0);
+    console.log('Raw participants data:', participantsData);
+
+    if (error) {
+      console.error('Error fetching participants:', error);
+      throw error;
+    }
+
+    // Jeśli są uczestnicy, pobierz dane użytkowników
+    if (participantsData && participantsData.length > 0) {
+      const userIds = participantsData.map(p => p.user_id);
+      
+      const { data: usersData, error: usersError } = await supabaseClient
+        .from('users')
+        .select('id, name, profile_photo_url, is_verified')
+        .in('id', userIds);
+
+      console.log('Users data:', usersData);
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+      }
+
+      // Połącz dane
+      const participantsWithUsers = participantsData.map(participant => ({
+        ...participant,
+        user: usersData?.find(u => u.id === participant.user_id) || null
+      }));
+
+      console.log('Final participants with users:', participantsWithUsers);
+      
+      setParticipants(participantsWithUsers);
+      setParticipantCount(participantsWithUsers.length);
+    } else {
+      setParticipants([]);
+      setParticipantCount(0);
+    }
   } catch (error) {
-    console.error('Error fetching participants:', error);
+    console.error('Error in fetchParticipants:', error);
     toast.error('Nie udało się pobrać listy uczestników');
   } finally {
     setLoadingParticipants(false);

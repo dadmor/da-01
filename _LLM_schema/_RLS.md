@@ -1,5 +1,5 @@
 # ROW LEVEL SECURITY (RLS) POLICIES
-Generated: 2025-07-23 20:31:59.109304+00
+Generated: 2025-07-23 21:02:00.162817+00
 
 ## 📊 RLS STATUS BY TABLE
 
@@ -173,27 +173,27 @@ USING (is_active = true);
 ## Table: `event_participants`
 **RLS Status**: ✅ ENABLED
 
-### Policy: `Participants can view event participants`
+### Policy: `Public event participants are visible`
 - **Command**: SELECT
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
 - **USING**: 
 ```sql
-user_id = auth.uid() OR (EXISTS ( SELECT 1
+(EXISTS ( SELECT 1
    FROM events
-  WHERE events.id = event_participants.event_id AND events.organizer_id = auth.uid()))
+  WHERE events.id = event_participants.event_id AND events.visibility = 'public'::text))
 ```
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Participants can view event participants"
+CREATE POLICY "Public event participants are visible"
 ON public.event_participants
 AS PERMISSIVE
 FOR SELECT
 TO PUBLIC
-USING (user_id = auth.uid() OR (EXISTS ( SELECT 1
+USING ((EXISTS ( SELECT 1
    FROM events
-  WHERE events.id = event_participants.event_id AND events.organizer_id = auth.uid())));
+  WHERE events.id = event_participants.event_id AND events.visibility = 'public'::text)));
 ```
 
 ### Policy: `Users can register for events`
