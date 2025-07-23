@@ -12,28 +12,30 @@ interface LikeButtonProps {
   variant?: "default" | "card";
   className?: string;
   onLikeChange?: (isLiked: boolean) => void;
+  initialLiked?: boolean;
 }
 
 export const LikeButton = ({ 
   targetUserId, 
   variant = "default",
   className = "",
-  onLikeChange 
+  onLikeChange,
+  initialLiked = false
 }: LikeButtonProps) => {
   const { data: identity } = useGetIdentity<any>();
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(initialLiked);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [showAnimation, setShowAnimation] = useState(false);
 
-  // Pobierz stan polubienia przy montowaniu
+  // Pobierz stan polubienia przy montowaniu tylko jeśli nie mamy initialLiked
   useEffect(() => {
-    if (identity?.id && targetUserId) {
+    if (identity?.id && targetUserId && initialLiked === undefined) {
       checkIfLiked();
     } else {
       setIsLoadingInitial(false);
     }
-  }, [identity?.id, targetUserId]);
+  }, [identity?.id, targetUserId, initialLiked]);
 
   const checkIfLiked = async () => {
     if (!identity?.id) return;

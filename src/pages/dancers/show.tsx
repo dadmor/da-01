@@ -10,6 +10,8 @@ import {
   Ruler,
   Music,
   GraduationCap,
+  Heart,
+  Sparkles,
 } from "lucide-react";
 import { GridBox } from "@/components/shared";
 import { Badge, Button, Separator } from "@/components/ui";
@@ -39,6 +41,9 @@ interface Dancer {
   is_verified: boolean;
   created_at: string;
   dance_styles?: DanceStyle[];
+  i_liked: boolean;
+  liked_me: boolean;
+  is_matched: boolean;
 }
 
 export const DancersShow = () => {
@@ -140,10 +145,26 @@ export const DancersShow = () => {
                     Trener
                   </Badge>
                 )}
+                {record.is_matched && (
+                  <Badge variant="default" className="bg-green-500">
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Dopasowanie!
+                  </Badge>
+                )}
+                {!record.is_matched && record.liked_me && (
+                  <Badge variant="default" className="bg-pink-500">
+                    <Heart className="w-4 h-4 mr-1" />
+                    Lubi Cię!
+                  </Badge>
+                )}
               </div>
 
               {/* Przycisk polubienia */}
-              <LikeButton targetUserId={record.id} variant="default" />
+              <LikeButton 
+                targetUserId={record.id} 
+                variant="default" 
+                initialLiked={record.i_liked}
+              />
             </div>
           </div>
         </CardContent>
@@ -238,6 +259,18 @@ export const DancersShow = () => {
                         Trener
                       </Badge>
                     )}
+                    {record.is_matched && (
+                      <Badge variant="default" className="bg-green-500">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Dopasowanie
+                      </Badge>
+                    )}
+                    {!record.is_matched && record.liked_me && (
+                      <Badge variant="default" className="bg-pink-500">
+                        <Heart className="w-3 h-3 mr-1" />
+                        Lubi Cię
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -254,9 +287,14 @@ export const DancersShow = () => {
                 targetUserId={record.id}
                 variant="default"
                 className="w-full"
+                initialLiked={record.i_liked}
               />
-              <Button variant="outline" className="w-full">
-                Wyślij wiadomość
+              <Button 
+                variant="outline" 
+                className="w-full"
+                disabled={!record.is_matched}
+              >
+                {record.is_matched ? "Wyślij wiadomość" : "Najpierw musicie się dopasować"}
               </Button>
               <Button variant="outline" className="w-full">
                 Zgłoś profil

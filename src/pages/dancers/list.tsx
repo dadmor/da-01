@@ -48,6 +48,9 @@ interface Dancer {
   is_verified: boolean;
   created_at: string;
   dance_styles?: DanceStyle[];
+  i_liked: boolean;
+  liked_me: boolean;
+  is_matched: boolean;
 }
 
 export const DancersList = () => {
@@ -78,16 +81,17 @@ export const DancersList = () => {
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
-    const filters = value
-      ? [
-          {
-            field: "name",
-            operator: "contains",
-            value: value,
-          },
-        ]
-      : [];
-    setFilters(filters);
+    if (value) {
+      setFilters([
+        {
+          field: "name",
+          operator: "contains" as any,
+          value: value,
+        },
+      ]);
+    } else {
+      setFilters([]);
+    }
   };
 
   const init = useLoading({ isLoading, isError });
@@ -178,11 +182,29 @@ export const DancersList = () => {
                   )}
                 </div>
 
-                {/* Przycisk polubienia */}
-                <div className="absolute top-3 right-3">
+                {/* Przycisk polubienia i status */}
+                <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                  {/* Badge dopasowania */}
+                  {dancer.is_matched && (
+                    <Badge className="bg-green-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Dopasowanie!
+                    </Badge>
+                  )}
+                  
+                  {/* Badge polubienia */}
+                  {!dancer.is_matched && dancer.liked_me && (
+                    <Badge className="bg-pink-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
+                      <Heart className="w-3 h-3 mr-1" />
+                      Lubi Cię!
+                    </Badge>
+                  )}
+                  
+                  {/* Przycisk polubienia */}
                   <LikeButton 
                     targetUserId={dancer.id} 
                     variant="card"
+                    initialLiked={dancer.i_liked}
                   />
                 </div>
 
@@ -267,8 +289,22 @@ export const DancersList = () => {
                   </div>
                   
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Aktywny dzisiaj</span>
+                    {dancer.is_matched ? (
+                      <>
+                        <MessageCircle className="w-3 h-3 text-green-500" />
+                        <span className="text-green-600 font-medium">Możesz pisać!</span>
+                      </>
+                    ) : dancer.liked_me ? (
+                      <>
+                        <Heart className="w-3 h-3 text-pink-500" />
+                        <span className="text-pink-600 font-medium">Czeka na polubienie</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" />
+                        <span>Aktywny dzisiaj</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>

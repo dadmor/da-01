@@ -1,5 +1,5 @@
 # DATABASE VIEWS
-Generated: 2025-07-23 12:31:18.61986+00
+Generated: 2025-07-23 13:18:15.30962+00
 
 # geography_columns [VIEW]
 f_table_catalog name
@@ -235,11 +235,16 @@ is_trainer bool
 is_verified bool
 created_at timestamp
 dance_styles ARRAY
+i_liked bool
+liked_me bool
+is_matched bool
 ---
 📊 Dependencies:
 TABLE: dance_styles
+TABLE: likes
 TABLE: user_dance_styles
 TABLE: users
+VIEW: v_matches
 VIEW: v_public_dancers
 ---
 📄 Definition:
@@ -265,11 +270,20 @@ VIEW: v_public_dancers
     u.is_trainer,
     u.is_verified,
     u.created_at,
-    array_agg(DISTINCT jsonb_build_object('style_id', ds.id, 'style_name', ds.name, 'skill_level', uds.skill_level, 'is_teaching', uds.is_teaching)) FILTER (WHERE ds.id IS NOT NULL) AS dance_styles
+    array_agg(DISTINCT jsonb_build_object('style_id', ds.id, 'style_name', ds.name, 'skill_level', uds.skill_level, 'is_teaching', uds.is_teaching)) FILTER (WHERE ds.id IS NOT NULL) AS dance_styles,
+    (EXISTS ( SELECT 1
+           FROM likes l
+          WHERE l.from_user_id = auth.uid() AND l.to_user_id = u.id)) AS i_liked,
+    (EXISTS ( SELECT 1
+           FROM likes l
+          WHERE l.from_user_id = u.id AND l.to_user_id = auth.uid())) AS liked_me,
+    (EXISTS ( SELECT 1
+           FROM v_matches m
+          WHERE m.user1_id = auth.uid() AND m.user2_id = u.id OR m.user1_id = u.id AND m.user2_id = auth.uid())) AS is_matched
    FROM users u
      LEFT JOIN user_dance_styles uds ON u.id = uds.user_id
      LEFT JOIN dance_styles ds ON uds.dance_style_id = ds.id
-  WHERE u.is_active = true AND u.is_banned = false AND u.visibility = 'public'::text
+  WHERE u.is_active = true AND u.is_banned = false AND u.visibility = 'public'::text AND u.id <> COALESCE(auth.uid(), '00000000-0000-0000-0000-000000000000'::uuid)
   GROUP BY u.id;
 ```
 
