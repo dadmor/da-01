@@ -6,17 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  Calendar,
   Clock,
   MapPin,
-  DollarSign,
   ChevronLeft,
   ChevronRight,
   Star,
   Users,
   Award,
   Video,
-  User,
   Check,
   X,
   Info,
@@ -139,39 +136,24 @@ export const TrainerBooking = () => {
 
         if (error) throw error;
 
-        // Generuj sloty czasowe
+        // Konwertuj wydarzenia na sloty czasowe
         const slots: TimeSlot[] = [];
-        const workHours = { start: 8, end: 20 }; // 8:00 - 20:00
-        const slotDuration = 60; // minuty
-
-        for (let d = 0; d < 7; d++) {
-          const currentDate = addDays(weekStart, d);
-          
-          // Pomiń przeszłe dni
-          if (isBefore(currentDate, new Date()) && !isSameDay(currentDate, new Date())) {
-            continue;
-          }
-
-          for (let hour = workHours.start; hour < workHours.end; hour++) {
-            const slotStart = `${hour.toString().padStart(2, '0')}:00`;
-            const slotEnd = `${(hour + 1).toString().padStart(2, '0')}:00`;
+        
+        if (events) {
+          events.forEach(event => {
+            const eventDate = new Date(event.start_at);
+            const startTime = format(eventDate, 'HH:mm');
+            const endTime = format(new Date(event.end_at), 'HH:mm');
             
-            // Sprawdź czy slot jest zajęty przez wydarzenie
-            const event = events?.find(e => {
-              const eventDate = new Date(e.start_at);
-              const eventHour = eventDate.getHours();
-              return isSameDay(eventDate, currentDate) && eventHour === hour;
-            });
-
             slots.push({
-              id: `${currentDate.toISOString()}-${slotStart}`,
-              event_id: event?.id,
-              date: currentDate,
-              start_time: slotStart,
-              end_time: slotEnd,
-              is_available: !event,
-              is_recurring: event?.is_recurring,
-              event: event ? {
+              id: event.id,
+              event_id: event.id,
+              date: eventDate,
+              start_time: startTime,
+              end_time: endTime,
+              is_available: false, // Event już istnieje
+              is_recurring: event.is_recurring,
+              event: {
                 id: event.id,
                 title: event.title,
                 event_type: event.event_type,
@@ -179,9 +161,9 @@ export const TrainerBooking = () => {
                 price: event.price,
                 participant_count: event.participant_count,
                 max_participants: event.max_participants || 999,
-              } : undefined
+              }
             });
-          }
+          });
         }
 
         setTimeSlots(slots);
@@ -208,7 +190,7 @@ export const TrainerBooking = () => {
   };
 
   const handleSlotClick = (slot: TimeSlot) => {
-    if (!slot.is_available && slot.event) {
+    if (slot.event) {
       // Jeśli to wydarzenie grupowe z wolnymi miejscami
       if (slot.event.participant_count < slot.event.max_participants) {
         setSelectedSlot(slot);
@@ -216,9 +198,6 @@ export const TrainerBooking = () => {
       } else {
         toast.error("Brak wolnych miejsc");
       }
-    } else if (slot.is_available) {
-      // Dla indywidualnych zajęć (przyszła funkcjonalność)
-      toast.info("Rezerwacja zajęć indywidualnych będzie dostępna wkrótce");
     }
   };
 
@@ -262,10 +241,10 @@ export const TrainerBooking = () => {
     return days;
   };
 
-  const getSlotForDateTime = (date: Date, time: string) => {
-    return timeSlots.find(slot => 
-      isSameDay(slot.date, date) && slot.start_time === time
-    );
+  // Pobierz eventy trenera i grupuj je po dniach/godzinach
+  const getEventsForDay = (date: Date) => {
+    return timeSlots.filter(slot => isSameDay(slot.date, date))
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
   const getEventTypeLabel = (type: string) => {
@@ -391,90 +370,86 @@ export const TrainerBooking = () => {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                              Godzina
-                            </th>
-                            {getDaysOfWeek().map((day) => (
-                              <th key={day.toISOString()} className="text-center p-2 min-w-[120px]">
-                                <div className="text-sm font-medium">
-                                  {format(day, 'EEE', { locale: pl })}
-                                </div>
-                                <div className={cn(
-                                  "text-lg font-semibold",
-                                  isSameDay(day, new Date()) && "text-primary"
-                                )}>
-                                  {format(day, 'd')}
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.from({ length: 12 }, (_, i) => i + 8).map((hour) => {
-                            const timeString = `${hour.toString().padStart(2, '0')}:00`;
+                      <div className="min-w-[800px]">
+                        {/* Nagłówek z dniami */}
+                        <div className="grid grid-cols-7 gap-2 p-4 border-b">
+                          {getDaysOfWeek().map((day) => (
+                            <div key={day.toISOString()} className="text-center">
+                              <div className="text-sm font-medium text-muted-foreground">
+                                {format(day, 'EEE', { locale: pl })}
+                              </div>
+                              <div className={cn(
+                                "text-lg font-semibold",
+                                isSameDay(day, new Date()) && "text-primary"
+                              )}>
+                                {format(day, 'd')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Kalendarz z eventami */}
+                        <div className="grid grid-cols-7 gap-2 p-4">
+                          {getDaysOfWeek().map((day) => {
+                            const dayEvents = getEventsForDay(day);
+                            const isPast = isBefore(day, new Date()) && !isSameDay(day, new Date());
                             
                             return (
-                              <tr key={hour} className="border-b">
-                                <td className="p-2 text-sm text-muted-foreground">
-                                  {timeString}
-                                </td>
-                                {getDaysOfWeek().map((day) => {
-                                  const slot = getSlotForDateTime(day, timeString);
-                                  const isPast = isBefore(day, new Date()) && !isSameDay(day, new Date());
-                                  
-                                  if (!slot || isPast) {
-                                    return (
-                                      <td key={day.toISOString()} className="p-1">
-                                        <div className="h-16 bg-gray-50 rounded" />
-                                      </td>
-                                    );
-                                  }
-
-                                  return (
-                                    <td key={day.toISOString()} className="p-1">
-                                      <button
-                                        onClick={() => handleSlotClick(slot)}
-                                        disabled={!slot.is_available && (!slot.event || slot.event.participant_count >= slot.event.max_participants)}
-                                        className={cn(
-                                          "w-full h-16 rounded-lg text-xs font-medium transition-all",
-                                          "hover:scale-105 hover:shadow-md",
-                                          slot.is_available 
-                                            ? "bg-green-50 hover:bg-green-100 text-green-700 border border-green-200"
-                                            : slot.event && slot.event.participant_count < slot.event.max_participants
-                                            ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
-                                            : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        )}
-                                      >
-                                        {slot.is_available ? (
-                                          <div>
-                                            <div className="font-semibold">Wolny</div>
-                                            <div className="text-[10px] opacity-75">Kliknij aby zarezerwować</div>
+                              <div key={day.toISOString()} className="min-h-[300px]">
+                                {isPast ? (
+                                  <div className="text-center text-sm text-muted-foreground py-8">
+                                    -
+                                  </div>
+                                ) : dayEvents.length === 0 ? (
+                                  <div className="text-center text-sm text-muted-foreground py-8">
+                                    Brak zajęć
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {dayEvents.map((slot) => {
+                                      if (!slot.event) return null;
+                                      const isFull = slot.event.participant_count >= slot.event.max_participants;
+                                      
+                                      return (
+                                        <button
+                                          key={slot.id}
+                                          onClick={() => handleSlotClick(slot)}
+                                          disabled={isFull}
+                                          className={cn(
+                                            "w-full p-3 rounded-lg text-left transition-all text-xs",
+                                            "hover:scale-105 hover:shadow-md",
+                                            isFull
+                                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                              : "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
+                                          )}
+                                        >
+                                          <div className="font-semibold">
+                                            {slot.start_time} - {slot.end_time}
                                           </div>
-                                        ) : slot.event ? (
-                                          <div className="px-1">
-                                            <div className="font-semibold truncate">{getEventTypeLabel(slot.event.event_type)}</div>
-                                            <div className="text-[10px] opacity-75">
-                                              {slot.event.participant_count}/{slot.event.max_participants} os.
-                                            </div>
+                                          <div className="mt-1 line-clamp-2">
+                                            {slot.event.title}
+                                          </div>
+                                          <div className="flex items-center justify-between mt-2">
+                                            <span>
+                                              <Users className="w-3 h-3 inline mr-1" />
+                                              {slot.event.participant_count}/{slot.event.max_participants}
+                                            </span>
                                             {slot.event.price > 0 && (
-                                              <div className="text-[10px] font-semibold">{slot.event.price} PLN</div>
+                                              <span className="font-semibold">
+                                                {slot.event.price} PLN
+                                              </span>
                                             )}
                                           </div>
-                                        ) : (
-                                          <div>Zajęty</div>
-                                        )}
-                                      </button>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -488,10 +463,6 @@ export const TrainerBooking = () => {
                   <h3 className="font-semibold">Legenda</h3>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-green-100 border border-green-200 rounded" />
-                    <span className="text-sm">Termin wolny (wkrótce)</span>
-                  </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded" />
                     <span className="text-sm">Zajęcia grupowe - są miejsca</span>
@@ -631,4 +602,4 @@ export const TrainerBooking = () => {
       </div>
     </div>
   );
-};  
+};
