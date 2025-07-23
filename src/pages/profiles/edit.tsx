@@ -1,6 +1,7 @@
 // ------ src/pages/profiles/edit.tsx ------
 import { useForm } from "@refinedev/react-hook-form";
 import { useGetIdentity, useUpdate } from "@refinedev/core";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -25,6 +26,7 @@ import { UserRecord, DanceStyle, UserDanceStyle } from "./interface";
 
 export const ProfileEdit = () => {
   const { data: identity, isLoading: isLoadingIdentity } = useGetIdentity<any>();
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<UserRecord | null>(null);
   const [userDanceStyles, setUserDanceStyles] = useState<UserDanceStyle[]>([]);
   const [availableDanceStyles, setAvailableDanceStyles] = useState<DanceStyle[]>([]);
@@ -281,19 +283,29 @@ export const ProfileEdit = () => {
   const onFinish = (values: any) => {
     if (!identity?.id) return;
 
+    // Usuń pola związane z dodawaniem stylów tańca - nie są częścią tabeli users
+    const { 
+      new_dance_style_id, 
+      new_skill_level, 
+      new_years_experience, 
+      new_is_teaching, 
+      ...userValues 
+    } = values;
+
     updateUser(
       {
         resource: "users",
         id: identity.id,
-        values,
+        values: userValues,
       },
       {
         onSuccess: () => {
-          // Możesz dodać toast lub przekierowanie
-          console.log("Profil zaktualizowany pomyślnie");
+          // Przekieruj do widoku profilu po zapisaniu
+          navigate("/profiles/show");
         },
         onError: (error) => {
           console.error("Błąd aktualizacji profilu:", error);
+          alert("Wystąpił błąd podczas zapisywania profilu. Spróbuj ponownie.");
         },
       }
     );
@@ -802,6 +814,14 @@ export const ProfileEdit = () => {
             disabled={isSubmitting}
           >
             {isSubmitting ? "Zapisywanie..." : "Zapisz zmiany"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/profiles/show")}
+            disabled={isSubmitting}
+          >
+            Anuluj
           </Button>
         </FormActions>
       </Form>
