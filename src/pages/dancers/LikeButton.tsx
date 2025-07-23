@@ -150,7 +150,7 @@ export const LikeButton = ({
     return (
       <button
         className={cn(
-          "relative group",
+          "relative",
           className
         )}
         onClick={handleLike}
@@ -161,16 +161,15 @@ export const LikeButton = ({
           "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
           isLiked 
             ? "bg-gradient-to-br from-pink-500 to-red-500 shadow-xl" 
-            : "bg-white shadow-lg border-2 border-gray-200",
-          "group-hover:scale-110 group-hover:shadow-xl"
+            : "bg-white shadow-lg border-2 border-gray-200 hover:border-red-300",
+          "hover:scale-110 hover:shadow-xl"
         )}>
           <Heart 
             className={cn(
               "w-6 h-6 transition-all duration-300",
               isLiked 
                 ? "text-white fill-white" 
-                : "text-red-500 group-hover:fill-red-500 group-hover:text-red-500",
-              "group-hover:scale-110",
+                : "text-red-500 hover:fill-red-500",
               showAnimation && "animate-ping"
             )}
           />
@@ -183,10 +182,9 @@ export const LikeButton = ({
         
         {/* Efekt świetlny przy hover */}
         <div className={cn(
-          "absolute inset-0 rounded-full",
-          "bg-gradient-to-br from-pink-400/0 to-red-400/0",
-          "group-hover:from-pink-400/20 group-hover:to-red-400/20",
-          "transition-all duration-300"
+          "absolute inset-0 rounded-full opacity-0 hover:opacity-100",
+          "bg-gradient-to-br from-pink-400/20 to-red-400/20",
+          "transition-opacity duration-300"
         )} />
       </button>
     );

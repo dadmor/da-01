@@ -166,7 +166,7 @@ export const DancersList = () => {
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 
-                {/* Badges w górnym rogu */}
+                {/* Badge'y statusu po lewej stronie */}
                 <div className="absolute top-3 left-3 flex flex-col gap-2">
                   {dancer.is_verified && (
                     <Badge className="bg-blue-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
@@ -176,31 +176,28 @@ export const DancersList = () => {
                   )}
                   {dancer.is_trainer && (
                     <Badge className="bg-purple-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
-                      <GraduationCap className="w-3 h-3 mr-1" />
+                      <GraduationCap className="w-4 h-4 mr-1" />
                       Trener
+                    </Badge>
+                  )}
+                  {/* Badge dopasowania */}
+                  {dancer.is_matched && (
+                    <Badge className="bg-green-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Dopasowanie!
+                    </Badge>
+                  )}
+                  {/* Badge polubienia */}
+                  {!dancer.is_matched && dancer.liked_me && (
+                    <Badge className="bg-pink-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
+                      <Heart className="w-4 h-4 mr-1" />
+                      Lubi Cię!
                     </Badge>
                   )}
                 </div>
 
-                {/* Przycisk polubienia i status */}
-                <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-                  {/* Badge dopasowania */}
-                  {dancer.is_matched && (
-                    <Badge className="bg-green-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      Dopasowanie!
-                    </Badge>
-                  )}
-                  
-                  {/* Badge polubienia */}
-                  {!dancer.is_matched && dancer.liked_me && (
-                    <Badge className="bg-pink-500/90 backdrop-blur-sm text-white border-0 shadow-lg">
-                      <Heart className="w-3 h-3 mr-1" />
-                      Lubi Cię!
-                    </Badge>
-                  )}
-                  
-                  {/* Przycisk polubienia */}
+                {/* Przycisk polubienia po prawej */}
+                <div className="absolute top-3 right-3">
                   <LikeButton 
                     targetUserId={dancer.id} 
                     variant="card"
