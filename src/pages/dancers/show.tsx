@@ -160,9 +160,9 @@ export const DancersShow = () => {
               </div>
 
               {/* Przycisk polubienia */}
-              <LikeButton 
-                targetUserId={record.id} 
-                variant="default" 
+              <LikeButton
+                targetUserId={record.id}
+                variant="default"
                 initialLiked={record.i_liked}
               />
             </div>
@@ -289,12 +289,14 @@ export const DancersShow = () => {
                 className="w-full"
                 initialLiked={record.i_liked}
               />
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 disabled={!record.is_matched}
               >
-                {record.is_matched ? "Wyślij wiadomość" : "Najpierw musicie się dopasować"}
+                {record.is_matched
+                  ? "Wyślij wiadomość"
+                  : "Najpierw musicie się dopasować"}
               </Button>
               <Button variant="outline" className="w-full">
                 Zgłoś profil

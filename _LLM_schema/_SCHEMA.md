@@ -144,7 +144,9 @@
 
 - FK: **from_user_id** → users.id `ON DELETE CASCADE`
 - FK: **to_user_id** → users.id `ON DELETE CASCADE`
+- IDX: `idx_likes_from_to` on (from_user_id, to_user_id)
 - IDX: `idx_likes_from_user_id` on (from_user_id)
+- IDX: `idx_likes_to_from` on (to_user_id, from_user_id)
 - IDX: `idx_likes_to_user_id` on (to_user_id)
 - UNQ: `likes_from_user_id_to_user_id_key` on (from_user_id, to_user_id)
 - CHK: `likes_check` ((from_user_id <> to_user_id))

@@ -1,11 +1,11 @@
 # ROW LEVEL SECURITY (RLS) POLICIES
-Generated: 2025-07-23 12:31:23.108477+00
+Generated: 2025-07-23 16:35:35.716247+00
 
 ## 📊 RLS STATUS BY TABLE
 
 | Table | RLS Status | Policies | Commands Covered |
 |-------|------------|----------|------------------|
-| conversation_participants | ✅ ENABLED | 1 | SELECT |
+| conversation_participants | ✅ ENABLED | 4 | INSERT, SELECT |
 | conversations | ✅ ENABLED | 1 | SELECT |
 | dance_styles | ✅ ENABLED | 1 | SELECT |
 | event_participants | ✅ ENABLED | 3 | INSERT, SELECT, UPDATE |
@@ -26,27 +26,100 @@ Generated: 2025-07-23 12:31:23.108477+00
 ## Table: `conversation_participants`
 **RLS Status**: ✅ ENABLED
 
-### Policy: `Participants can view conversation participants`
+### Policy: `Users can view other participants in their conversations`
 - **Command**: SELECT
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
 - **USING**: 
 ```sql
-(EXISTS ( SELECT 1
-   FROM conversation_participants cp
-  WHERE cp.conversation_id = cp.conversation_id AND cp.user_id = auth.uid()))
+(conversation_id IN ( SELECT conversation_participants_1.conversation_id
+   FROM conversation_participants conversation_participants_1
+  WHERE conversation_participants_1.user_id = auth.uid()))
 ```
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Participants can view conversation participants"
+CREATE POLICY "Users can view other participants in their conversations"
 ON public.conversation_participants
 AS PERMISSIVE
 FOR SELECT
 TO PUBLIC
-USING ((EXISTS ( SELECT 1
-   FROM conversation_participants cp
-  WHERE cp.conversation_id = cp.conversation_id AND cp.user_id = auth.uid())));
+USING ((conversation_id IN ( SELECT conversation_participants_1.conversation_id
+   FROM conversation_participants conversation_participants_1
+  WHERE conversation_participants_1.user_id = auth.uid())));
+```
+
+### Policy: `Users can view own participation`
+- **Command**: SELECT
+- **Type**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: 
+```sql
+user_id = auth.uid()
+```
+
+**Full Definition**:
+```sql
+CREATE POLICY "Users can view own participation"
+ON public.conversation_participants
+AS PERMISSIVE
+FOR SELECT
+TO PUBLIC
+USING (user_id = auth.uid());
+```
+
+### Policy: `System can insert conversation participants`
+- **Command**: INSERT
+- **Type**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: 
+```sql
+true
+```
+- **WITH CHECK**: 
+```sql
+true
+```
+
+**Full Definition**:
+```sql
+CREATE POLICY "System can insert conversation participants"
+ON public.conversation_participants
+AS PERMISSIVE
+FOR INSERT
+TO PUBLIC
+USING (true)
+WITH CHECK (true);
+```
+
+### Policy: `Users can be added to conversations`
+- **Command**: INSERT
+- **Type**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: 
+```sql
+true
+```
+- **WITH CHECK**: 
+```sql
+user_id = auth.uid() OR (EXISTS ( SELECT 1
+   FROM likes l1
+     JOIN likes l2 ON l1.from_user_id = l2.to_user_id AND l1.to_user_id = l2.from_user_id
+  WHERE l1.from_user_id = auth.uid() AND l1.to_user_id = conversation_participants.user_id OR l2.from_user_id = auth.uid() AND l2.to_user_id = conversation_participants.user_id))
+```
+
+**Full Definition**:
+```sql
+CREATE POLICY "Users can be added to conversations"
+ON public.conversation_participants
+AS PERMISSIVE
+FOR INSERT
+TO PUBLIC
+USING (true)
+WITH CHECK (user_id = auth.uid() OR (EXISTS ( SELECT 1
+   FROM likes l1
+     JOIN likes l2 ON l1.from_user_id = l2.to_user_id AND l1.to_user_id = l2.from_user_id
+  WHERE l1.from_user_id = auth.uid() AND l1.to_user_id = conversation_participants.user_id OR l2.from_user_id = auth.uid() AND l2.to_user_id = conversation_participants.user_id)));
 ```
 
 ## Table: `conversations`
@@ -58,9 +131,9 @@ USING ((EXISTS ( SELECT 1
 - **Roles**: PUBLIC
 - **USING**: 
 ```sql
-(EXISTS ( SELECT 1
+(id IN ( SELECT conversation_participants.conversation_id
    FROM conversation_participants
-  WHERE conversation_participants.conversation_id = conversations.id AND conversation_participants.user_id = auth.uid()))
+  WHERE conversation_participants.user_id = auth.uid()))
 ```
 
 **Full Definition**:
@@ -70,9 +143,9 @@ ON public.conversations
 AS PERMISSIVE
 FOR SELECT
 TO PUBLIC
-USING ((EXISTS ( SELECT 1
+USING ((id IN ( SELECT conversation_participants.conversation_id
    FROM conversation_participants
-  WHERE conversation_participants.conversation_id = conversations.id AND conversation_participants.user_id = auth.uid())));
+  WHERE conversation_participants.user_id = auth.uid())));
 ```
 
 ## Table: `dance_styles`
@@ -178,30 +251,26 @@ WITH CHECK (user_id = auth.uid());
 ## Table: `events`
 **RLS Status**: ✅ ENABLED
 
-### Policy: `Public events viewable by all`
+### Policy: `Events select policy`
 - **Command**: SELECT
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
 - **USING**: 
 ```sql
-visibility = 'public'::text OR organizer_id = auth.uid() OR (EXISTS ( SELECT 1
-   FROM event_participants
-  WHERE event_participants.event_id = event_participants.id AND event_participants.user_id = auth.uid()))
+visibility = 'public'::text OR organizer_id = auth.uid()
 ```
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Public events viewable by all"
+CREATE POLICY "Events select policy"
 ON public.events
 AS PERMISSIVE
 FOR SELECT
 TO PUBLIC
-USING (visibility = 'public'::text OR organizer_id = auth.uid() OR (EXISTS ( SELECT 1
-   FROM event_participants
-  WHERE event_participants.event_id = event_participants.id AND event_participants.user_id = auth.uid())));
+USING (visibility = 'public'::text OR organizer_id = auth.uid());
 ```
 
-### Policy: `Users can create events`
+### Policy: `Events insert policy`
 - **Command**: INSERT
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
@@ -216,7 +285,7 @@ organizer_id = auth.uid()
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Users can create events"
+CREATE POLICY "Events insert policy"
 ON public.events
 AS PERMISSIVE
 FOR INSERT
@@ -225,7 +294,7 @@ USING (true)
 WITH CHECK (organizer_id = auth.uid());
 ```
 
-### Policy: `Organizers can update own events`
+### Policy: `Events update policy`
 - **Command**: UPDATE
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
@@ -240,7 +309,7 @@ organizer_id = auth.uid()
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Organizers can update own events"
+CREATE POLICY "Events update policy"
 ON public.events
 AS PERMISSIVE
 FOR UPDATE
@@ -249,7 +318,7 @@ USING (organizer_id = auth.uid())
 WITH CHECK (organizer_id = auth.uid());
 ```
 
-### Policy: `Organizers can delete own events`
+### Policy: `Events delete policy`
 - **Command**: DELETE
 - **Type**: PERMISSIVE
 - **Roles**: PUBLIC
@@ -260,7 +329,7 @@ organizer_id = auth.uid()
 
 **Full Definition**:
 ```sql
-CREATE POLICY "Organizers can delete own events"
+CREATE POLICY "Events delete policy"
 ON public.events
 AS PERMISSIVE
 FOR DELETE

@@ -1,5 +1,5 @@
 # DATABASE TRIGGERS AND FUNCTIONS
-Generated: 2025-07-23 12:36:09.229685+00
+Generated: 2025-07-23 16:35:26.570234+00
 Filter: Only triggers with prefix "trg_" and functions with prefix "fn_"
 
 ## TRIGGERS (prefix: trg_)
@@ -153,6 +153,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.fn_create_match_conversation()
  RETURNS trigger
  LANGUAGE plpgsql
+ SECURITY DEFINER
 AS $function$
 DECLARE
     v_conversation_id UUID;
