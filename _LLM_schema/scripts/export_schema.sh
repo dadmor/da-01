@@ -230,10 +230,9 @@ SELECT
         '- **' || enum_name || '**: \`' || enum_values || '\`',
         E'\n'
         ORDER BY enum_name
-      ) FROM enum_types) || E'\n\n'
+      ) FROM enum_types) || E'\n\n## Tables\n\n'
     ELSE ''
   END ||
-  '## Tables\n\n' ||
   COALESCE(tables_output.schema, '') as full_schema
 FROM tables_output;" > "$OUTPUT_FILE"
 

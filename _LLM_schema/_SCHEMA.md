@@ -1,6 +1,6 @@
 # Database Schema
 
-## Tables\n\n## conversation_participants
+## conversation_participants
 
 - **conversation_id** uuid `PK` `NOT NULL`
 - **user_id** uuid `PK` `NOT NULL`
