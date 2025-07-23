@@ -50,11 +50,24 @@ interface Trainer {
   teaching_styles?: string[];
 }
 
+interface TrainerStats {
+  trainer_id: string;
+  name: string;
+  total_events: number;
+  unique_students: number;
+  avg_participants: number;
+  total_revenue: number;
+  review_count: number;
+  average_rating: number;
+  teaching_styles: string[];
+}
+
 export const TrainersList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [styleFilter, setStyleFilter] = useState<string>("all");
-  const [trainersStats, setTrainersStats] = useState<Record<string, any>>({});
+  const [trainersStats, setTrainersStats] = useState<Record<string, TrainerStats>>({});
+  const [priceRanges, setPriceRanges] = useState<Record<string, { min: number; max: number }>>({});
 
   const {
     tableQuery: { data, isLoading, isError },
@@ -94,6 +107,7 @@ export const TrainersList = () => {
       if (!data?.data) return;
       
       const trainerIds = (data.data as Trainer[]).map(t => t.id);
+      console.log('Fetching stats for trainers:', trainerIds);
       
       try {
         // Pobierz statystyki z widoku
@@ -102,49 +116,65 @@ export const TrainersList = () => {
           .select('*')
           .in('trainer_id', trainerIds);
 
+        console.log('Trainer stats response:', { stats, error });
+        console.log('Detailed stats data:', stats?.map(s => ({
+          trainer_id: s.trainer_id,
+          name: s.name,
+          total_events: s.total_events,
+          unique_students: s.unique_students,
+          average_rating: s.average_rating,
+          review_count: s.review_count
+        })));
+
+        if (error) {
+          console.error('Error fetching trainer stats:', error);
+        }
+
         if (!error && stats) {
           const statsMap = stats.reduce((acc, stat) => {
             acc[stat.trainer_id] = stat;
             return acc;
-          }, {} as Record<string, any>);
+          }, {} as Record<string, TrainerStats>);
+          console.log('Stats map:', statsMap);
           setTrainersStats(statsMap);
         }
 
-        // Pobierz style tańca
-        const { data: styles, error: stylesError } = await supabaseClient
-          .from('user_dance_styles')
-          .select(`
-            user_id,
-            dance_styles!inner (
-              name
-            )
-          `)
-          .in('user_id', trainerIds)
-          .eq('is_teaching', true);
-
-        if (!stylesError && styles) {
-          const stylesMap = styles.reduce((acc, item) => {
-            if (!acc[item.user_id]) {
-              acc[item.user_id] = [];
+        // Pobierz zakresy cen dla każdego trenera
+        console.log('Fetching price ranges for trainers...');
+        
+        // Sprawdźmy najpierw czy są jakieś wydarzenia
+        const { data: allEvents, error: allEventsError } = await supabaseClient
+          .from('events')
+          .select('id, organizer_id, price, status, title')
+          .in('organizer_id', trainerIds);
+          
+        console.log('All events for trainers:', allEvents);
+        
+        const priceMap: Record<string, { min: number; max: number }> = {};
+        
+        if (!allEventsError && allEvents) {
+          // Grupuj wydarzenia po organizatorze
+          trainerIds.forEach(trainerId => {
+            const trainerEvents = allEvents.filter(e => e.organizer_id === trainerId);
+            console.log(`All events for trainer ${trainerId}:`, trainerEvents);
+            
+            // Filtruj tylko te z ceną > 0
+            const eventsWithPrice = trainerEvents.filter(e => e.price > 0);
+            console.log(`Events with price > 0 for trainer ${trainerId}:`, eventsWithPrice);
+            
+            if (eventsWithPrice.length > 0) {
+              const prices = eventsWithPrice.map(e => e.price);
+              priceMap[trainerId] = {
+                min: Math.min(...prices),
+                max: Math.max(...prices)
+              };
             }
-            const styleName = (item.dance_styles as any)?.name;
-            if (styleName) {
-              acc[item.user_id].push(styleName);
-            }
-            return acc;
-          }, {} as Record<string, string[]>);
-
-          setTrainersStats(prev => {
-            const updated = { ...prev };
-            Object.keys(stylesMap).forEach(userId => {
-              if (!updated[userId]) {
-                updated[userId] = {};
-              }
-              updated[userId].teaching_styles = stylesMap[userId];
-            });
-            return updated;
           });
         }
+        
+        console.log('Final price map:', priceMap);
+        setPriceRanges(priceMap);
+
       } catch (error) {
         console.error('Error fetching trainer stats:', error);
       }
@@ -180,6 +210,8 @@ export const TrainersList = () => {
     }
 
     if (style !== "all") {
+      // To nie zadziała bezpośrednio na tabeli users
+      // Ale możemy to zostawić jako placeholder
       filters.push({
         field: "teaching_styles",
         operator: "contains" as any,
@@ -213,11 +245,34 @@ export const TrainersList = () => {
   // Funkcja do pobierania unikalnych miast
   const uniqueCities = Array.from(new Set(trainers.map(t => t.city).filter(Boolean)));
 
+  // Pobierz wszystkie unikalne style tańca
+  const allStyles = new Set<string>();
+  Object.values(trainersStats).forEach(stat => {
+    if (stat.teaching_styles) {
+      stat.teaching_styles.forEach(style => allStyles.add(style));
+    }
+  });
+
   // Funkcja do określenia zakresu cenowego
-  const getPriceRange = (trainer: Trainer) => {
-    // To będzie pobierane z analizy cen wydarzeń trenera
-    return "50-150 PLN";
+  const getPriceRange = (trainerId: string) => {
+    const range = priceRanges[trainerId];
+    if (range) {
+      if (range.min === range.max) {
+        return `${range.min} PLN`;
+      }
+      return `${range.min}-${range.max} PLN`;
+    }
+    return "Zapytaj o cenę";
   };
+
+  // Filtruj trenerów po stylach (jeśli wybrany)
+  let filteredTrainers = trainers;
+  if (styleFilter !== "all") {
+    filteredTrainers = trainers.filter(trainer => {
+      const stats = trainersStats[trainer.id];
+      return stats?.teaching_styles?.includes(styleFilter);
+    });
+  }
 
   return (
     <SubPage>
@@ -260,24 +315,31 @@ export const TrainersList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Wszystkie style</SelectItem>
-              <SelectItem value="Salsa">Salsa</SelectItem>
-              <SelectItem value="Bachata">Bachata</SelectItem>
-              <SelectItem value="Tango">Tango</SelectItem>
-              <SelectItem value="Hip Hop">Hip Hop</SelectItem>
+              {Array.from(allStyles).sort().map(style => (
+                <SelectItem key={style} value={style}>{style}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <Badge variant="outline">
           <Users className="w-3 h-3 mr-1" />
-          {data?.total || 0} trenerów
+          {filteredTrainers.length} trenerów
         </Badge>
       </FlexBox>
 
       <GridBox variant="1-2-3">
-        {trainers.map((trainer) => {
-          const stats = trainersStats[trainer.id] || {};
-          const teachingStyles = stats.teaching_styles || [];
+        {filteredTrainers.map((trainer) => {
+          const stats = trainersStats[trainer.id];
+          const teachingStyles = stats?.teaching_styles || [];
+          
+          console.log(`Rendering trainer ${trainer.name}:`, {
+            id: trainer.id,
+            stats: stats,
+            hasStats: !!stats,
+            totalEvents: stats?.total_events,
+            uniqueStudents: stats?.unique_students
+          });
           
           return (
             <Card 
@@ -313,11 +375,11 @@ export const TrainersList = () => {
                       )}
 
                       {/* Ocena */}
-                      {stats.average_rating && stats.review_count > 0 && (
+                      {stats?.average_rating && stats.review_count > 0 && (
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex items-center gap-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-medium">{stats.average_rating.toFixed(1)}</span>
+                            <span className="font-medium">{Number(stats.average_rating).toFixed(1)}</span>
                           </div>
                           <span className="text-sm text-muted-foreground">
                             ({stats.review_count} {stats.review_count === 1 ? 'opinia' : 'opinii'})
@@ -355,19 +417,19 @@ export const TrainersList = () => {
                 <div className="grid grid-cols-3 gap-px bg-gray-200">
                   <div className="bg-gray-50 p-3 text-center">
                     <p className="text-2xl font-semibold text-primary">
-                      {stats.total_events || 0}
+                      {stats?.total_events || 0}
                     </p>
                     <p className="text-xs text-muted-foreground">wydarzeń</p>
                   </div>
                   <div className="bg-gray-50 p-3 text-center">
                     <p className="text-2xl font-semibold text-primary">
-                      {stats.unique_students || 0}
+                      {stats?.unique_students || 0}
                     </p>
                     <p className="text-xs text-muted-foreground">uczniów</p>
                   </div>
                   <div className="bg-gray-50 p-3 text-center">
                     <p className="text-lg font-semibold text-primary">
-                      {getPriceRange(trainer)}
+                      {getPriceRange(trainer.id)}
                     </p>
                     <p className="text-xs text-muted-foreground">cena</p>
                   </div>
@@ -376,12 +438,21 @@ export const TrainersList = () => {
                 {/* Footer z akcjami */}
                 <div className="p-4 bg-white border-t">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-1 text-sm">
-                      <Clock className="w-4 h-4 text-green-600" />
-                      <span className="text-green-600 font-medium">
-                        Wolne terminy dzisiaj
-                      </span>
-                    </div>
+                    {stats && stats.total_events > 0 ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Clock className="w-4 h-4 text-green-600" />
+                        <span className="text-green-600 font-medium">
+                          Aktywny trener
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          Nowy trener
+                        </span>
+                      </div>
+                    )}
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                   
@@ -400,7 +471,7 @@ export const TrainersList = () => {
         })}
       </GridBox>
 
-      {trainers.length === 0 && (
+      {filteredTrainers.length === 0 && (
         <Card className="p-12 text-center border-dashed">
           <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold mb-2">
@@ -417,7 +488,7 @@ export const TrainersList = () => {
       <PaginationSwith
         current={current}
         pageSize={pageSize}
-        total={data?.total || 0}
+        total={filteredTrainers.length}
         setCurrent={setCurrent}
         itemName="trenerów"
       />
