@@ -1,8 +1,7 @@
-// src/pages/events/edit.tsx
-import { useState, useEffect } from "react";
+// ------ src/pages/events/edit.tsx ------
 import { useForm } from "@refinedev/react-hook-form";
-import { useNavigation, useShow, useUpdate } from "@refinedev/core";
-import { useNavigate } from "react-router-dom";
+import { useGetIdentity, useUpdate, useList, useShow } from "@refinedev/core";
+import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -11,66 +10,107 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, X } from "lucide-react";
-import { Button, Input, Textarea } from "@/components/ui";
+import { 
+  CalendarDays, 
+  MapPin, 
+  Globe, 
+  DollarSign,
+  Users,
+  Music,
+  Info,
+  Clock,
+  GraduationCap,
+  Trophy,
+  PartyPopper,
+  BookOpen,
+  Mic,
+  CheckCircle2,
+  Link as LinkIcon,
+  AlertCircle,
+  XCircle,
+} from "lucide-react";
+import { Button, Input, Textarea, Switch } from "@/components/ui";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
-import { supabaseClient } from "@/utility";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { SubPage } from "@/components/layout";
+import { toast } from "sonner";
+import { useEffect } from "react";
 import { useLoading } from "@/utility";
-import { format } from "date-fns";
-import { Event } from "./events";
-import { DanceStyle } from "../dancers/dancers";
 
-const eventCategories = [
-  { value: "lesson", label: "Lekcja indywidualna" },
-  { value: "workshop", label: "Warsztaty" },
-  { value: "outdoor", label: "Wydarzenie plenerowe" },
-  { value: "party", label: "Impreza taneczna" },
-  { value: "course", label: "Kurs" },
-];
+interface DanceStyle {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
 
-const eventFormats = [
-  { value: "individual", label: "Indywidualne" },
-  { value: "couple", label: "W parach" },
-  { value: "group", label: "Grupowe" },
-  { value: "open", label: "Otwarte" },
-];
-
-const locationTypes = [
-  { value: "address", label: "Adres" },
-  { value: "online", label: "Online" },
-  { value: "client_location", label: "U klienta" },
-];
-
-const skillLevels = [
-  { value: "beginner", label: "Początkujący" },
-  { value: "intermediate", label: "Średniozaawansowany" },
-  { value: "advanced", label: "Zaawansowany" },
-  { value: "professional", label: "Profesjonalny" },
-];
+interface Event {
+  id: string;
+  organizer_id: string;
+  title: string;
+  description?: string;
+  event_type: string;
+  dance_style_id?: string;
+  start_at: string;
+  end_at: string;
+  is_recurring: boolean;
+  location_type: string;
+  location_name?: string;
+  address?: string;
+  city?: string;
+  online_platform?: string;
+  online_link?: string;
+  website_url?: string;
+  registration_url?: string;
+  min_participants: number;
+  max_participants?: number;
+  skill_level_min?: string;
+  skill_level_max?: string;
+  price: number;
+  currency: string;
+  early_bird_price?: number;
+  early_bird_deadline?: string;
+  requires_partner: boolean;
+  age_min?: number;
+  age_max?: number;
+  status: string;
+  visibility: string;
+}
 
 export const EventsEdit = () => {
-  const { list, show } = useNavigation();
+  const { id } = useParams<{ id: string }>();
+  const { data: identity } = useGetIdentity<any>();
   const navigate = useNavigate();
   const { mutate: updateEvent } = useUpdate();
-  const [danceStyles, setDanceStyles] = useState<DanceStyle[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState("");
-  const [requirements, setRequirements] = useState<string[]>([]);
-  const [currentRequirement, setCurrentRequirement] = useState("");
 
-  const { queryResult } = useShow<Event>({
-    meta: {
-      select: '*'
-    }
+  // Pobierz dane wydarzenia
+  const { queryResult } = useShow({
+    resource: "events",
+    id: id!,
   });
 
-  const { data, isLoading, isError } = queryResult;
-  const record = data?.data;
+  const { data: eventData, isLoading, isError } = queryResult;
+  const event = eventData?.data as Event;
+
+  // Pobierz listę stylów tańca
+  const { data: danceStylesData } = useList<DanceStyle>({
+    resource: "dance_styles",
+    filters: [
+      {
+        field: "is_active",
+        operator: "eq",
+        value: true,
+      },
+    ],
+    sorters: [
+      {
+        field: "name",
+        order: "asc",
+      },
+    ],
+  });
+
+  const danceStyles = danceStylesData?.data || [];
 
   const {
     register,
@@ -81,241 +121,227 @@ export const EventsEdit = () => {
     formState: { errors, isSubmitting },
   } = useForm();
 
-  const locationType = watch("location_type");
-  const isRecurring = watch("is_recurring");
-
-  const fetchDanceStyles = async () => {
-    const { data } = await supabaseClient
-      .from("dance_styles")
-      .select("id, name, category")
-      .order("name");
-    
-    if (data) {
-      setDanceStyles(data);
-    }
-  };
-
+  // Ustaw wartości formularza po załadowaniu danych
   useEffect(() => {
-    fetchDanceStyles();
-  }, []);
-
-  useEffect(() => {
-    if (record) {
-      // Parse dates and times
-      const startDate = new Date(record.start_datetime);
-      const endDate = new Date(record.end_datetime);
+    if (event) {
+      // Konwertuj daty do formatu datetime-local
+      const startDate = new Date(event.start_at).toISOString().slice(0, 16);
+      const endDate = new Date(event.end_at).toISOString().slice(0, 16);
       
-      // Set form values
       reset({
-        ...record,
-        event_date: format(startDate, 'yyyy-MM-dd'),
-        start_time: format(startDate, 'HH:mm'),
-        end_time: format(endDate, 'HH:mm'),
-        price_amount: record.price_amount?.toString() || '',
-        max_participants: record.max_participants?.toString() || '',
-        min_participants: record.min_participants?.toString() || '',
+        ...event,
+        start_at: startDate,
+        end_at: endDate,
+        early_bird_deadline: event.early_bird_deadline 
+          ? new Date(event.early_bird_deadline).toISOString().slice(0, 10)
+          : "",
       });
-
-      // Set tags and requirements
-      if (record.tags) setTags(record.tags);
-      if (record.requirements) setRequirements(record.requirements);
     }
-  }, [record, reset]);
+  }, [event, reset]);
 
   const init = useLoading({ isLoading, isError });
   if (init) return init;
 
-  if (!record) {
+  // Sprawdź czy użytkownik jest organizatorem
+  if (event && event.organizer_id !== identity?.id) {
     return (
-      <div className="p-6 mx-auto">
+      <SubPage>
         <div className="text-center py-12">
-          <p className="text-red-500 text-lg">Wydarzenie nie znalezione</p>
-          <Button className="mt-4" onClick={() => list("events")}>
-            Powrót do listy
+          <p className="text-red-500 text-lg">Nie masz uprawnień do edycji tego wydarzenia</p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate(`/events/show/${id}`)}
+          >
+            Wróć do wydarzenia
           </Button>
         </div>
-      </div>
+      </SubPage>
     );
   }
 
-  const addTag = () => {
-    if (currentTag && !tags.includes(currentTag)) {
-      setTags([...tags, currentTag]);
-      setCurrentTag("");
+  const watchLocationType = watch("location_type");
+  const watchEventType = watch("event_type");
+  const watchPrice = watch("price");
+  const watchStartAt = watch("start_at");
+  const watchSkillLevelMin = watch("skill_level_min");
+
+  const onFinish = (values: any) => {
+    // Walidacja dat
+    if (new Date(values.start_at) >= new Date(values.end_at)) {
+      toast.error("Data zakończenia musi być po dacie rozpoczęcia");
+      return;
     }
-  };
 
-  const removeTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
+    // Przygotuj dane
+    const eventData = {
+      ...values,
+      // Konwertuj puste stringi na null
+      dance_style_id: values.dance_style_id || null,
+      max_participants: values.max_participants || null,
+      early_bird_price: values.early_bird_price || null,
+      early_bird_deadline: values.early_bird_deadline || null,
+      age_min: values.age_min || null,
+      age_max: values.age_max || null,
+      website_url: values.website_url || null,
+      registration_url: values.registration_url || null,
+      location_name: values.location_name || null,
+      address: values.address || null,
+      city: values.city || null,
+      online_platform: values.online_platform || null,
+      online_link: values.online_link || null,
+    };
 
-  const addRequirement = () => {
-    if (currentRequirement && !requirements.includes(currentRequirement)) {
-      setRequirements([...requirements, currentRequirement]);
-      setCurrentRequirement("");
-    }
-  };
-
-  const removeRequirement = (req: string) => {
-    setRequirements(requirements.filter(r => r !== req));
-  };
-
-  const handleFormSubmit = async (data: any) => {
-    try {
-      // Przygotuj dane wydarzenia
-      const eventData = {
-        ...data,
-        tags: tags.length > 0 ? tags : null,
-        requirements: requirements.length > 0 ? requirements : null,
-        start_datetime: new Date(`${data.event_date}T${data.start_time}`).toISOString(),
-        end_datetime: new Date(`${data.event_date}T${data.end_time}`).toISOString(),
-        price_amount: data.price_amount && data.price_amount !== '' ? parseFloat(data.price_amount) : null,
-        max_participants: data.max_participants && data.max_participants !== '' ? parseInt(data.max_participants) : null,
-        min_participants: data.min_participants && data.min_participants !== '' ? parseInt(data.min_participants) : 1,
-        age_min: data.age_min && data.age_min !== '' ? parseInt(data.age_min) : null,
-        age_max: data.age_max && data.age_max !== '' ? parseInt(data.age_max) : null,
-        early_bird_discount: data.early_bird_discount && data.early_bird_discount !== '' ? parseFloat(data.early_bird_discount) : null,
-      };
-
-      // Usuń niepotrzebne pola
-      delete eventData.event_date;
-      delete eventData.start_time;
-      delete eventData.end_time;
-      delete eventData.id;
-      delete eventData.created_at;
-      delete eventData.updated_at;
-      delete eventData.organizer_id;
-
-      updateEvent(
-        {
-          resource: "events",
-          id: record.id,
-          values: eventData,
+    updateEvent(
+      {
+        resource: "events",
+        id: id!,
+        values: eventData,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Wydarzenie zostało zaktualizowane!");
+          navigate(`/events/show/${id}`);
         },
-        {
-          onSuccess: () => {
-            alert("Wydarzenie zostało zaktualizowane!");
-            navigate(`/events/show/${record.id}`);
-          },
-          onError: (error) => {
-            console.error("Error updating event:", error);
-            alert("Błąd podczas aktualizacji wydarzenia");
-          },
-        }
-      );
-      
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Wystąpił błąd podczas aktualizacji wydarzenia");
-    }
+        onError: (error: any) => {
+          console.error("Update error:", error);
+          toast.error("Błąd aktualizacji wydarzenia", {
+            description: error.message || "Spróbuj ponownie",
+          });
+        },
+      }
+    );
+  };
+
+  const getEventTypeIcon = (type: string) => {
+    const icons: Record<string, JSX.Element> = {
+      lesson: <BookOpen className="w-4 h-4" />,
+      workshop: <GraduationCap className="w-4 h-4" />,
+      social: <PartyPopper className="w-4 h-4" />,
+      competition: <Trophy className="w-4 h-4" />,
+      performance: <Mic className="w-4 h-4" />,
+    };
+    return icons[type] || <CalendarDays className="w-4 h-4" />;
   };
 
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={() => show("events", record.id)}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Powrót do wydarzenia
-      </Button>
-
+    <SubPage>
       <FlexBox>
         <Lead
           title="Edytuj wydarzenie"
           description="Zaktualizuj informacje o wydarzeniu"
         />
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/events/show/${id}`)}
+        >
+          Anuluj
+        </Button>
       </FlexBox>
 
-      <Form
-        onSubmit={handleSubmit(handleFormSubmit)}
-        className="max-w-4xl mx-auto"
-      >
-        <GridBox>
-          {/* Left Column */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Podstawowe informacje</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+      <Form onSubmit={handleSubmit(onFinish)}>
+        <GridBox variant="1-1-1">
+          {/* Podstawowe informacje */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="w-5 h-5" />
+                Podstawowe informacje
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormControl
+                label="Tytuł wydarzenia"
+                htmlFor="title"
+                error={errors.title?.message as string}
+                required
+              >
+                <Input
+                  id="title"
+                  placeholder="np. Warsztaty Salsy dla początkujących"
+                  {...register("title", {
+                    required: "Tytuł jest wymagany",
+                    minLength: {
+                      value: 5,
+                      message: "Tytuł musi mieć minimum 5 znaków",
+                    },
+                    maxLength: {
+                      value: 100,
+                      message: "Tytuł może mieć maksymalnie 100 znaków",
+                    },
+                  })}
+                />
+              </FormControl>
+
+              <FormControl
+                label="Opis"
+                htmlFor="description"
+                error={errors.description?.message as string}
+              >
+                <Textarea
+                  id="description"
+                  rows={6}
+                  placeholder="Opisz swoje wydarzenie..."
+                  {...register("description", {
+                    maxLength: {
+                      value: 2000,
+                      message: "Opis może mieć maksymalnie 2000 znaków",
+                    },
+                  })}
+                />
+              </FormControl>
+
+              <GridBox variant="1-2-2">
                 <FormControl
-                  label="Tytuł wydarzenia"
-                  htmlFor="title"
-                  error={errors.title?.message as string}
+                  label="Typ wydarzenia"
+                  error={errors.event_type?.message as string}
                   required
                 >
-                  <Input
-                    id="title"
-                    placeholder="np. Lekcja salsy dla początkujących"
-                    {...register("title", {
-                      required: "Tytuł jest wymagany",
-                      minLength: {
-                        value: 5,
-                        message: "Tytuł musi mieć minimum 5 znaków"
-                      }
-                    })}
-                  />
+                  <Select
+                    value={watch("event_type")}
+                    onValueChange={(value) => setValue("event_type", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz typ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lesson">
+                        {getEventTypeIcon("lesson")}
+                        <span className="ml-2">Lekcja</span>
+                      </SelectItem>
+                      <SelectItem value="workshop">
+                        {getEventTypeIcon("workshop")}
+                        <span className="ml-2">Warsztaty</span>
+                      </SelectItem>
+                      <SelectItem value="social">
+                        {getEventTypeIcon("social")}
+                        <span className="ml-2">Potańcówka</span>
+                      </SelectItem>
+                      <SelectItem value="competition">
+                        {getEventTypeIcon("competition")}
+                        <span className="ml-2">Zawody</span>
+                      </SelectItem>
+                      <SelectItem value="performance">
+                        {getEventTypeIcon("performance")}
+                        <span className="ml-2">Występ</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormControl>
-
-                <GridBox variant="1-2-2">
-                  <FormControl
-                    label="Kategoria"
-                    htmlFor="event_category"
-                    error={errors.event_category?.message as string}
-                    required
-                  >
-                    <Select
-                      value={watch("event_category")}
-                      onValueChange={(value) => setValue("event_category", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eventCategories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-
-                  <FormControl
-                    label="Format"
-                    htmlFor="event_format"
-                    error={errors.event_format?.message as string}
-                    required
-                  >
-                    <Select
-                      value={watch("event_format")}
-                      onValueChange={(value) => setValue("event_format", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eventFormats.map((format) => (
-                          <SelectItem key={format.value} value={format.value}>
-                            {format.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                </GridBox>
 
                 <FormControl
                   label="Styl tańca"
-                  htmlFor="dance_style_id"
                   error={errors.dance_style_id?.message as string}
                 >
                   <Select
-                    value={watch("dance_style_id")}
+                    value={watch("dance_style_id") || ""}
                     onValueChange={(value) => setValue("dance_style_id", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Wybierz styl tańca" />
+                      <Music className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Wybierz styl" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">Brak / Różne style</SelectItem>
                       {danceStyles.map((style) => (
                         <SelectItem key={style.id} value={style.id}>
                           {style.name}
@@ -324,567 +350,525 @@ export const EventsEdit = () => {
                     </SelectContent>
                   </Select>
                 </FormControl>
+              </GridBox>
+            </CardContent>
+          </Card>
 
+          {/* Data i czas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Data i czas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GridBox variant="1-2-2">
                 <FormControl
-                  label="Opis"
-                  htmlFor="description"
-                  error={errors.description?.message as string}
+                  label="Data i godzina rozpoczęcia"
+                  htmlFor="start_at"
+                  error={errors.start_at?.message as string}
                   required
                 >
-                  <Textarea
-                    id="description"
-                    placeholder="Opisz swoje wydarzenie..."
-                    rows={4}
-                    {...register("description", {
-                      required: "Opis jest wymagany",
-                      minLength: {
-                        value: 20,
-                        message: "Opis musi mieć minimum 20 znaków"
-                      }
+                  <Input
+                    id="start_at"
+                    type="datetime-local"
+                    {...register("start_at", {
+                      required: "Data rozpoczęcia jest wymagana",
                     })}
                   />
                 </FormControl>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Termin i czas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <GridBox variant="1-2-2">
-                  <FormControl
-                    label="Data"
-                    htmlFor="event_date"
-                    error={errors.event_date?.message as string}
-                    required
-                  >
-                    <Input
-                      id="event_date"
-                      type="date"
-                      {...register("event_date", {
-                        required: "Data jest wymagana"
-                      })}
-                    />
-                  </FormControl>
-
-                  <FormControl
-                    label="Godzina rozpoczęcia"
-                    htmlFor="start_time"
-                    error={errors.start_time?.message as string}
-                    required
-                  >
-                    <Input
-                      id="start_time"
-                      type="time"
-                      {...register("start_time", {
-                        required: "Godzina rozpoczęcia jest wymagana"
-                      })}
-                    />
-                  </FormControl>
-
-                  <FormControl
-                    label="Godzina zakończenia"
-                    htmlFor="end_time"
-                    error={errors.end_time?.message as string}
-                    required
-                  >
-                    <Input
-                      id="end_time"
-                      type="time"
-                      {...register("end_time", {
-                        required: "Godzina zakończenia jest wymagana"
-                      })}
-                    />
-                  </FormControl>
-                </GridBox>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="is_recurring"
-                    checked={isRecurring}
-                    onCheckedChange={(checked) => setValue("is_recurring", checked)}
-                  />
-                  <Label htmlFor="is_recurring">Wydarzenie cykliczne</Label>
-                </div>
-
-                {isRecurring && (
-                  <FormControl
-                    label="Częstotliwość"
-                    htmlFor="recurrence_rule"
-                  >
-                    <Input
-                      id="recurrence_rule"
-                      placeholder="np. Co tydzień w poniedziałki"
-                      {...register("recurrence_rule")}
-                    />
-                  </FormControl>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Lokalizacja</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <FormControl
-                  label="Typ lokalizacji"
-                  htmlFor="location_type"
-                  error={errors.location_type?.message as string}
+                  label="Data i godzina zakończenia"
+                  htmlFor="end_at"
+                  error={errors.end_at?.message as string}
                   required
                 >
-                  <Select
-                    value={locationType}
-                    onValueChange={(value) => setValue("location_type", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locationTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-
-                {locationType === "online" ? (
-                  <>
-                    <FormControl
-                      label="Platforma"
-                      htmlFor="online_platform"
-                    >
-                      <Select
-                        value={watch("online_platform")}
-                        onValueChange={(value) => setValue("online_platform", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Wybierz platformę" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="zoom">Zoom</SelectItem>
-                          <SelectItem value="google_meet">Google Meet</SelectItem>
-                          <SelectItem value="skype">Skype</SelectItem>
-                          <SelectItem value="other">Inne</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-
-                    <FormControl
-                      label="Link do spotkania"
-                      htmlFor="online_link"
-                    >
-                      <Input
-                        id="online_link"
-                        type="url"
-                        placeholder="https://..."
-                        {...register("online_link")}
-                      />
-                    </FormControl>
-                  </>
-                ) : locationType === "address" && (
-                  <>
-                    <FormControl
-                      label="Nazwa miejsca"
-                      htmlFor="location_name"
-                    >
-                      <Input
-                        id="location_name"
-                        placeholder="np. Studio Tańca Salsa"
-                        {...register("location_name")}
-                      />
-                    </FormControl>
-
-                    <FormControl
-                      label="Adres"
-                      htmlFor="address"
-                      error={errors.address?.message as string}
-                      required
-                    >
-                      <Input
-                        id="address"
-                        placeholder="ul. Przykładowa 1"
-                        {...register("address", {
-                          required: locationType === "address" ? "Adres jest wymagany" : false
-                        })}
-                      />
-                    </FormControl>
-
-                    <FormControl
-                      label="Miasto"
-                      htmlFor="city"
-                      error={errors.city?.message as string}
-                      required
-                    >
-                      <Input
-                        id="city"
-                        placeholder="Warszawa"
-                        {...register("city", {
-                          required: locationType === "address" ? "Miasto jest wymagane" : false
-                        })}
-                      />
-                    </FormControl>
-
-
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Uczestnicy i poziom</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <GridBox>
-                  <FormControl
-                    label="Min. uczestników"
-                    htmlFor="min_participants"
-                  >
-                    <Input
-                      id="min_participants"
-                      type="number"
-                      min="1"
-                      placeholder="1"
-                      {...register("min_participants")}
-                    />
-                  </FormControl>
-
-                  <FormControl
-                    label="Max. uczestników"
-                    htmlFor="max_participants"
-                  >
-                    <Input
-                      id="max_participants"
-                      type="number"
-                      min="1"
-                      placeholder="Bez limitu"
-                      {...register("max_participants")}
-                    />
-                  </FormControl>
-                </GridBox>
-
-                <GridBox>
-                  <FormControl
-                    label="Poziom od"
-                    htmlFor="skill_level_required"
-                  >
-                    <Select
-                      value={watch("skill_level_required")}
-                      onValueChange={(value) => setValue("skill_level_required", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Dowolny" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {skillLevels.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-
-                  <FormControl
-                    label="Poziom do"
-                    htmlFor="skill_level_max"
-                  >
-                    <Select
-                      value={watch("skill_level_max")}
-                      onValueChange={(value) => setValue("skill_level_max", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Dowolny" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {skillLevels.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                </GridBox>
-
-                <GridBox>
-                  <FormControl
-                    label="Wiek od"
-                    htmlFor="age_min"
-                  >
-                    <Input
-                      id="age_min"
-                      type="number"
-                      min="1"
-                      max="100"
-                      {...register("age_min")}
-                    />
-                  </FormControl>
-
-                  <FormControl
-                    label="Wiek do"
-                    htmlFor="age_max"
-                  >
-                    <Input
-                      id="age_max"
-                      type="number"
-                      min="1"
-                      max="100"
-                      {...register("age_max")}
-                    />
-                  </FormControl>
-                </GridBox>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="requires_partner"
-                      checked={watch("requires_partner")}
-                      onCheckedChange={(checked) => setValue("requires_partner", checked)}
-                    />
-                    <Label htmlFor="requires_partner">Wymagany partner</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="provides_partner"
-                      checked={watch("provides_partner")}
-                      onCheckedChange={(checked) => setValue("provides_partner", checked)}
-                    />
-                    <Label htmlFor="provides_partner">Zapewniam partnera</Label>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Cennik</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <GridBox>
-                  <FormControl
-                    label="Cena"
-                    htmlFor="price_amount"
-                  >
-                    <Input
-                      id="price_amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0"
-                      {...register("price_amount")}
-                    />
-                  </FormControl>
-
-                  <FormControl
-                    label="Za"
-                    htmlFor="price_per"
-                  >
-                    <Select
-                      value={watch("price_per")}
-                      onValueChange={(value) => setValue("price_per", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="person">Osobę</SelectItem>
-                        <SelectItem value="couple">Parę</SelectItem>
-                        <SelectItem value="hour">Godzinę</SelectItem>
-                        <SelectItem value="course">Cały kurs</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                </GridBox>
-
-                <FormControl
-                  label="Polityka anulowania"
-                  htmlFor="cancellation_policy"
-                >
-                  <Textarea
-                    id="cancellation_policy"
-                    placeholder="np. Bezpłatna anulacja do 24h przed wydarzeniem"
-                    rows={2}
-                    {...register("cancellation_policy")}
+                  <Input
+                    id="end_at"
+                    type="datetime-local"
+                    {...register("end_at", {
+                      required: "Data zakończenia jest wymagana",
+                    })}
                   />
                 </FormControl>
-              </CardContent>
-            </Card>
+              </GridBox>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Dodatkowe informacje</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormControl
-                  label="Czego się spodziewać"
-                  htmlFor="what_to_expect"
-                >
-                  <Textarea
-                    id="what_to_expect"
-                    placeholder="Co uczestnicy wyniosą z wydarzenia..."
-                    rows={3}
-                    {...register("what_to_expect")}
+              <FormControl label="Wydarzenie cykliczne">
+                <FlexBox variant="start">
+                  <Switch
+                    checked={watch("is_recurring") || false}
+                    onCheckedChange={(checked) => setValue("is_recurring", checked)}
                   />
-                </FormControl>
+                  <span className="text-sm text-muted-foreground">
+                    To wydarzenie powtarza się regularnie
+                  </span>
+                </FlexBox>
+              </FormControl>
+            </CardContent>
+          </Card>
 
-                <FormControl label="Wymagania">
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="np. Wygodne buty"
-                        value={currentRequirement}
-                        onChange={(e) => setCurrentRequirement(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addRequirement();
-                          }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addRequirement}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {requirements.map((req, idx) => (
-                        <Badge key={idx} variant="secondary">
-                          {req}
-                          <X
-                            className="w-3 h-3 ml-1 cursor-pointer"
-                            onClick={() => removeRequirement(req)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </FormControl>
-
-                <FormControl label="Tagi">
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="np. początkujący"
-                        value={currentTag}
-                        onChange={(e) => setCurrentTag(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addTag();
-                          }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addTag}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag, idx) => (
-                        <Badge key={idx} variant="outline">
-                          #{tag}
-                          <X
-                            className="w-3 h-3 ml-1 cursor-pointer"
-                            onClick={() => removeTag(tag)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </FormControl>
-
-                <FormControl
-                  label="Widoczność"
-                  htmlFor="visibility"
+          {/* Lokalizacja */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Lokalizacja
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormControl
+                label="Typ lokalizacji"
+                error={errors.location_type?.message as string}
+                required
+              >
+                <Select
+                  value={watch("location_type")}
+                  onValueChange={(value) => setValue("location_type", value)}
                 >
-                  <Select
-                    value={watch("visibility")}
-                    onValueChange={(value) => setValue("visibility", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">Publiczne</SelectItem>
-                      <SelectItem value="private">Prywatne</SelectItem>
-                      <SelectItem value="students_only">Tylko dla uczniów</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz typ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="physical">
+                      <MapPin className="w-4 h-4 mr-2 inline" />
+                      Stacjonarne
+                    </SelectItem>
+                    <SelectItem value="online">
+                      <Globe className="w-4 h-4 mr-2 inline" />
+                      Online
+                    </SelectItem>
+                    <SelectItem value="hybrid">
+                      <Users className="w-4 h-4 mr-2 inline" />
+                      Hybrydowe
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
 
-                <FormControl
-                  label="Status"
-                  htmlFor="status"
-                >
-                  <Select
-                    value={watch("status")}
-                    onValueChange={(value) => setValue("status", value)}
+              {(watchLocationType === "physical" || watchLocationType === "hybrid") && (
+                <>
+                  <FormControl
+                    label="Nazwa miejsca"
+                    htmlFor="location_name"
+                    error={errors.location_name?.message as string}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Aktywne</SelectItem>
-                      <SelectItem value="cancelled">Anulowane</SelectItem>
-                      <SelectItem value="completed">Zakończone</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-              </CardContent>
-            </Card>
+                    <Input
+                      id="location_name"
+                      placeholder="np. Szkoła Tańca Salsa"
+                      {...register("location_name")}
+                    />
+                  </FormControl>
 
-            {/* Info o uczestnikach */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informacje o zapisach</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="font-medium">Zapisanych uczestników:</span>{' '}
-                    {record.current_participants || 0}
-                    {record.max_participants && ` / ${record.max_participants}`}
-                  </p>
-                  <p>
-                    <span className="font-medium">Status:</span>{' '}
-                    <Badge variant={record.status === 'active' ? 'default' : 'secondary'}>
-                      {record.status}
-                    </Badge>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  <FormControl
+                    label="Adres"
+                    htmlFor="address"
+                    error={errors.address?.message as string}
+                  >
+                    <Input
+                      id="address"
+                      placeholder="np. ul. Taneczna 10"
+                      {...register("address")}
+                    />
+                  </FormControl>
+
+                  <FormControl
+                    label="Miasto"
+                    htmlFor="city"
+                    error={errors.city?.message as string}
+                  >
+                    <Input
+                      id="city"
+                      placeholder="np. Warszawa"
+                      {...register("city")}
+                    />
+                  </FormControl>
+                </>
+              )}
+
+              {(watchLocationType === "online" || watchLocationType === "hybrid") && (
+                <>
+                  <FormControl
+                    label="Platforma"
+                    htmlFor="online_platform"
+                    error={errors.online_platform?.message as string}
+                  >
+                    <Input
+                      id="online_platform"
+                      placeholder="np. Zoom, Google Meet"
+                      {...register("online_platform")}
+                    />
+                  </FormControl>
+
+                  <FormControl
+                    label="Link do spotkania"
+                    htmlFor="online_link"
+                    error={errors.online_link?.message as string}
+                  >
+                    <Input
+                      id="online_link"
+                      type="url"
+                      placeholder="https://..."
+                      {...register("online_link")}
+                    />
+                  </FormControl>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </GridBox>
+
+        <GridBox variant="1-2-2">
+          {/* Uczestnicy i poziom */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Uczestnicy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GridBox variant="1-2-2">
+                <FormControl
+                  label="Min. liczba uczestników"
+                  htmlFor="min_participants"
+                  error={errors.min_participants?.message as string}
+                >
+                  <Input
+                    id="min_participants"
+                    type="number"
+                    min="1"
+                    {...register("min_participants", {
+                      valueAsNumber: true,
+                      min: { value: 1, message: "Minimum 1 uczestnik" },
+                    })}
+                  />
+                </FormControl>
+
+                <FormControl
+                  label="Max. liczba uczestników"
+                  htmlFor="max_participants"
+                  error={errors.max_participants?.message as string}
+                >
+                  <Input
+                    id="max_participants"
+                    type="number"
+                    min="1"
+                    placeholder="Brak limitu"
+                    {...register("max_participants", {
+                      valueAsNumber: true,
+                      min: { value: 1, message: "Minimum 1 uczestnik" },
+                    })}
+                  />
+                </FormControl>
+
+                <FormControl
+                  label="Poziom minimalny"
+                  error={errors.skill_level_min?.message as string}
+                >
+                  <Select
+                    value={watch("skill_level_min")}
+                    onValueChange={(value) => {
+                      setValue("skill_level_min", value);
+                      // Jeśli poziom max jest niższy niż min, wyrównaj
+                      const levels = ["beginner", "intermediate", "advanced", "professional"];
+                      const minIndex = levels.indexOf(value);
+                      const maxIndex = levels.indexOf(watch("skill_level_max"));
+                      if (maxIndex < minIndex) {
+                        setValue("skill_level_max", value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz poziom" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Początkujący</SelectItem>
+                      <SelectItem value="intermediate">Średniozaawansowany</SelectItem>
+                      <SelectItem value="advanced">Zaawansowany</SelectItem>
+                      <SelectItem value="professional">Profesjonalny</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+
+                <FormControl
+                  label="Poziom maksymalny"
+                  error={errors.skill_level_max?.message as string}
+                >
+                  <Select
+                    value={watch("skill_level_max")}
+                    onValueChange={(value) => setValue("skill_level_max", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz poziom" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(!watchSkillLevelMin || watchSkillLevelMin === "beginner") && (
+                        <SelectItem value="beginner">Początkujący</SelectItem>
+                      )}
+                      {(!watchSkillLevelMin || watchSkillLevelMin === "beginner" || watchSkillLevelMin === "intermediate") && (
+                        <SelectItem value="intermediate">Średniozaawansowany</SelectItem>
+                      )}
+                      {(!watchSkillLevelMin || watchSkillLevelMin === "beginner" || watchSkillLevelMin === "intermediate" || watchSkillLevelMin === "advanced") && (
+                        <SelectItem value="advanced">Zaawansowany</SelectItem>
+                      )}
+                      <SelectItem value="professional">Profesjonalny</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </GridBox>
+
+              <FormControl label="Wymagany partner">
+                <FlexBox variant="start">
+                  <Switch
+                    checked={watch("requires_partner") || false}
+                    onCheckedChange={(checked) => setValue("requires_partner", checked)}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Uczestnicy muszą przyjść w parach
+                  </span>
+                </FlexBox>
+              </FormControl>
+
+              <GridBox variant="1-2-2">
+                <FormControl
+                  label="Wiek minimalny"
+                  htmlFor="age_min"
+                  error={errors.age_min?.message as string}
+                >
+                  <Input
+                    id="age_min"
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Brak ograniczeń"
+                    {...register("age_min", {
+                      valueAsNumber: true,
+                      min: { value: 0, message: "Minimum 0 lat" },
+                      max: { value: 100, message: "Maksimum 100 lat" },
+                    })}
+                  />
+                </FormControl>
+
+                <FormControl
+                  label="Wiek maksymalny"
+                  htmlFor="age_max"
+                  error={errors.age_max?.message as string}
+                >
+                  <Input
+                    id="age_max"
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Brak ograniczeń"
+                    {...register("age_max", {
+                      valueAsNumber: true,
+                      min: { value: 0, message: "Minimum 0 lat" },
+                      max: { value: 100, message: "Maksimum 100 lat" },
+                    })}
+                  />
+                </FormControl>
+              </GridBox>
+            </CardContent>
+          </Card>
+
+          {/* Cena i płatności */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Cena i płatności
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GridBox variant="1-2-2">
+                <FormControl
+                  label="Cena"
+                  htmlFor="price"
+                  error={errors.price?.message as string}
+                  required
+                >
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register("price", {
+                      valueAsNumber: true,
+                      min: { value: 0, message: "Cena nie może być ujemna" },
+                    })}
+                  />
+                </FormControl>
+
+                <FormControl
+                  label="Waluta"
+                  error={errors.currency?.message as string}
+                >
+                  <Select
+                    value={watch("currency")}
+                    onValueChange={(value) => setValue("currency", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wybierz walutę" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLN">PLN</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </GridBox>
+
+              {watchPrice > 0 && (
+                <>
+                  <GridBox variant="1-2-2">
+                    <FormControl
+                      label="Cena Early Bird"
+                      htmlFor="early_bird_price"
+                      error={errors.early_bird_price?.message as string}
+                    >
+                      <Input
+                        id="early_bird_price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Opcjonalne"
+                        {...register("early_bird_price", {
+                          valueAsNumber: true,
+                          min: { value: 0, message: "Cena nie może być ujemna" },
+                        })}
+                      />
+                    </FormControl>
+
+                    <FormControl
+                      label="Early Bird do"
+                      htmlFor="early_bird_deadline"
+                      error={errors.early_bird_deadline?.message as string}
+                    >
+                      <Input
+                        id="early_bird_deadline"
+                        type="date"
+                        min={new Date().toISOString().split("T")[0]}
+                        max={watchStartAt ? watchStartAt.split("T")[0] : undefined}
+                        {...register("early_bird_deadline")}
+                      />
+                    </FormControl>
+                  </GridBox>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </GridBox>
+
+        {/* Dodatkowe informacje */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LinkIcon className="w-5 h-5" />
+              Dodatkowe informacje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GridBox variant="1-2-2">
+              <FormControl
+                label="Strona wydarzenia"
+                htmlFor="website_url"
+                error={errors.website_url?.message as string}
+              >
+                <Input
+                  id="website_url"
+                  type="url"
+                  placeholder="https://..."
+                  {...register("website_url")}
+                />
+              </FormControl>
+
+              <FormControl
+                label="Link do zewnętrznej rejestracji"
+                htmlFor="registration_url"
+                error={errors.registration_url?.message as string}
+              >
+                <Input
+                  id="registration_url"
+                  type="url"
+                  placeholder="https://..."
+                  {...register("registration_url")}
+                />
+              </FormControl>
+
+              <FormControl
+                label="Status"
+                error={errors.status?.message as string}
+                required
+              >
+                <Select
+                  value={watch("status")}
+                  onValueChange={(value) => setValue("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">
+                      <AlertCircle className="w-4 h-4 mr-2 inline text-gray-500" />
+                      Szkic
+                    </SelectItem>
+                    <SelectItem value="published">
+                      <CheckCircle2 className="w-4 h-4 mr-2 inline text-green-500" />
+                      Opublikowane
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      <XCircle className="w-4 h-4 mr-2 inline text-red-500" />
+                      Odwołane
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      <CheckCircle2 className="w-4 h-4 mr-2 inline text-blue-500" />
+                      Zakończone
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+
+              <FormControl
+                label="Widoczność"
+                error={errors.visibility?.message as string}
+              >
+                <Select
+                  value={watch("visibility")}
+                  onValueChange={(value) => setValue("visibility", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wybierz widoczność" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Publiczne</SelectItem>
+                    <SelectItem value="private">Prywatne</SelectItem>
+                    <SelectItem value="unlisted">Niewidoczne w liście</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </GridBox>
+          </CardContent>
+        </Card>
 
         <FormActions>
           <Button
             type="button"
             variant="outline"
-            onClick={() => show("events", record.id)}
+            onClick={() => navigate(`/events/show/${id}`)}
           >
             Anuluj
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Zapisywanie..." : "Zapisz zmiany"}
           </Button>
         </FormActions>
       </Form>
-    </>
+    </SubPage>
   );
 };

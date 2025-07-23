@@ -1,137 +1,305 @@
-// src/pages/events/show.tsx
-import {
-  useShow,
-  useNavigation,
-  useGetIdentity,
-  useCreate,
-  useDelete,
-  useList,
-} from "@refinedev/core";
+// ------ src/pages/events/show.tsx ------
+import { useShow, useNavigation, useGetIdentity, useDelete } from "@refinedev/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
+  CalendarDays,
   MapPin,
   Users,
+  Clock,
   Music,
-  Star,
-  Sparkles,
-  TrendingUp,
+  DollarSign,
+  Globe,
+  Link as LinkIcon,
+  GraduationCap,
+  Trophy,
+  PartyPopper,
+  BookOpen,
+  Mic,
   Edit,
-  Trash,
+  Trash2,
   Share2,
+  Heart,
+  UserPlus,
+  CheckCircle2,
+  XCircle,
   AlertCircle,
-  CheckCircle,
+  Calendar,
+  CreditCard,
+  Info,
+  ExternalLink,
+  Mail,
+  Phone,
+  Repeat,
 } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
-import { useLoading, cn } from "@/utility";
-import { format, differenceInHours } from "date-fns";
+import { GridBox, FlexBox } from "@/components/shared";
+import { Badge, Button, Separator } from "@/components/ui";
+import { useLoading } from "@/utility";
+import { SubPage } from "@/components/layout";
+import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { Event } from "./events";
-import { UserIdentity } from "../dancers/dancers";
 import { useState } from "react";
 import { toast } from "sonner";
+import { supabaseClient } from "@/utility/supabaseClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface DanceStyle {
+  id: string;
+  name: string;
+}
+
+interface Organizer {
+  id: string;
+  name: string;
+  email: string;
+  is_verified: boolean;
+  is_trainer: boolean;
+}
+
+interface Event {
+  id: string;
+  organizer_id: string;
+  organizer?: Organizer;
+  title: string;
+  description?: string;
+  event_type: string;
+  dance_style_id?: string;
+  dance_style?: DanceStyle;
+  start_at: string;
+  end_at: string;
+  is_recurring: boolean;
+  recurrence_rule?: any;
+  parent_event_id?: string;
+  location_type: string;
+  location_name?: string;
+  address?: string;
+  city?: string;
+  location_lat?: number;
+  location_lng?: number;
+  online_platform?: string;
+  online_link?: string;
+  website_url?: string;
+  registration_url?: string;
+  min_participants: number;
+  max_participants?: number;
+  participant_count: number;
+  skill_level_min?: string;
+  skill_level_max?: string;
+  price: number;
+  currency: string;
+  early_bird_price?: number;
+  early_bird_deadline?: string;
+  requires_partner: boolean;
+  age_min?: number;
+  age_max?: number;
+  status: string;
+  visibility: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Participant {
+  id: string;
+  user_id: string;
+  status: string;
+  registered_at: string;
+}
 
 export const EventsShow = () => {
-  const { data: identity } = useGetIdentity<UserIdentity>();
+  const { data: identity } = useGetIdentity<any>();
+  const { queryResult } = useShow({
+    resource: "events",
+    meta: {
+      select: "*, dance_style:dance_styles(*), organizer:users(*)"
+    }
+  });
   const { list, edit } = useNavigation();
   const { mutate: deleteEvent } = useDelete();
-  const { mutate: createParticipant } = useCreate();
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const { queryResult } = useShow<Event>({
-    meta: {
-      select: `*, 
-        users!events_organizer_id_fkey(
-          id,
-          email,
-          dancers(id, name, profile_photo_url),
-          dance_schools(id, name, logo_url)
-        ),
-        dance_styles(name, category)`,
-    },
-  });
+  
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [userParticipation, setUserParticipation] = useState<Participant | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data, isLoading, isError } = queryResult;
-  const record = data?.data;
+  const record = data?.data as Event;
 
-  // Pobierz uczestników wydarzenia
-  const { data: participantsData } = useList({
-    resource: "event_participants",
-    filters: [
-      {
-        field: "event_id",
-        operator: "eq",
-        value: record?.id || "",
-      },
-    ],
-    queryOptions: {
-      enabled: !!record?.id,
-    },
+  // Sprawdź czy użytkownik jest zapisany
+  useState(() => {
+    if (identity?.id && record?.id) {
+      supabaseClient
+        .from('event_participants')
+        .select('*')
+        .eq('event_id', record.id)
+        .eq('user_id', identity.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setUserParticipation(data);
+        });
+    }
   });
-
-  const eventParticipants = participantsData?.data || [];
 
   const init = useLoading({ isLoading, isError });
   if (init) return init;
 
   if (!record) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-red-500 text-lg mb-4">Wydarzenie nie znalezione</p>
-        <Button onClick={() => list("events")}>Powrót do listy</Button>
-      </div>
+      <SubPage>
+        <div className="text-center py-12">
+          <p className="text-red-500 text-lg">Wydarzenie nie zostało znalezione</p>
+          <Button className="mt-4" onClick={() => list("events")}>
+            Wróć do listy
+          </Button>
+        </div>
+      </SubPage>
     );
   }
 
-  // Obliczenia
-  const userParticipation = eventParticipants.find(
-    (p: any) => p.participant_id === identity?.id
-  );
+  // Funkcje pomocnicze
   const isOrganizer = record.organizer_id === identity?.id;
-  const spotsLeft = record.max_participants
-    ? record.max_participants - record.current_participants
+  const isPast = new Date(record.end_at) < new Date();
+  const isUpcoming = new Date(record.start_at) > new Date();
+  const isOngoing = !isPast && !isUpcoming;
+  const spotsLeft = record.max_participants 
+    ? record.max_participants - record.participant_count 
     : null;
-  const isFull = spotsLeft === 0;
-  const hasStarted = new Date(record.start_datetime) < new Date();
-  const hoursUntil = differenceInHours(
-    new Date(record.start_datetime),
-    new Date()
-  );
-  const isStartingSoon = hoursUntil >= 0 && hoursUntil <= 3;
+  const isFull = spotsLeft !== null && spotsLeft <= 0;
+  const canRegister = !isPast && !isFull && record.status === 'published' && !isOrganizer;
 
-  // Info o organizatorze
-  const getOrganizerInfo = () => {
-    const user = record.users;
-    if (!user) return { name: "Nieznany organizator", photo: null };
-
-    if (user.dancers?.[0]) {
-      return {
-        name: user.dancers[0].name,
-        photo: user.dancers[0].profile_photo_url,
-        id: user.dancers[0].id,
-        type: "dancer",
-      };
-    } else if (user.dance_schools?.[0]) {
-      return {
-        name: user.dance_schools[0].name,
-        photo: user.dance_schools[0].logo_url,
-        id: user.dance_schools[0].id,
-        type: "school",
-      };
-    }
-
-    return { name: user.email, photo: null, type: "user" };
+  const getEventTypeIcon = (type: string) => {
+    const icons: Record<string, JSX.Element> = {
+      lesson: <BookOpen className="w-5 h-5" />,
+      workshop: <GraduationCap className="w-5 h-5" />,
+      social: <PartyPopper className="w-5 h-5" />,
+      competition: <Trophy className="w-5 h-5" />,
+      performance: <Mic className="w-5 h-5" />,
+    };
+    return icons[type] || <CalendarDays className="w-5 h-5" />;
   };
 
-  const organizer = getOrganizerInfo();
+  const getEventTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      lesson: "Lekcja",
+      workshop: "Warsztaty",
+      social: "Potańcówka",
+      competition: "Zawody",
+      performance: "Występ",
+    };
+    return labels[type] || type;
+  };
+
+  const getLocationTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      physical: "Stacjonarne",
+      online: "Online",
+      hybrid: "Hybrydowe",
+    };
+    return labels[type] || type;
+  };
+
+  const getSkillLevelLabel = (level: string) => {
+    const labels: Record<string, string> = {
+      beginner: "Początkujący",
+      intermediate: "Średniozaawansowany",
+      advanced: "Zaawansowany",
+      professional: "Profesjonalny",
+    };
+    return labels[level] || level;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { icon: JSX.Element; variant: any; label: string }> = {
+      draft: { 
+        icon: <AlertCircle className="w-4 h-4" />, 
+        variant: "secondary", 
+        label: "Szkic" 
+      },
+      published: { 
+        icon: <CheckCircle2 className="w-4 h-4" />, 
+        variant: "default", 
+        label: "Opublikowane" 
+      },
+      cancelled: { 
+        icon: <XCircle className="w-4 h-4" />, 
+        variant: "destructive", 
+        label: "Odwołane" 
+      },
+      completed: { 
+        icon: <CheckCircle2 className="w-4 h-4" />, 
+        variant: "outline", 
+        label: "Zakończone" 
+      },
+    };
+
+    const config = statusConfig[status] || statusConfig.draft;
+    return (
+      <Badge variant={config.variant}>
+        {config.icon}
+        <span className="ml-1">{config.label}</span>
+      </Badge>
+    );
+  };
+
+  const handleRegistration = async () => {
+    if (!identity?.id) {
+      toast.error("Musisz być zalogowany", {
+        description: "Zaloguj się, aby zapisać się na wydarzenie",
+      });
+      return;
+    }
+
+    setIsRegistering(true);
+
+    try {
+      if (userParticipation) {
+        // Wypisz się
+        const { error } = await supabaseClient
+          .from('event_participants')
+          .delete()
+          .eq('id', userParticipation.id);
+
+        if (error) throw error;
+
+        setUserParticipation(null);
+        toast.success("Wypisano z wydarzenia");
+      } else {
+        // Zapisz się
+        const { data, error } = await supabaseClient
+          .from('event_participants')
+          .insert({
+            event_id: record.id,
+            user_id: identity.id,
+            status: 'registered'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setUserParticipation(data);
+        toast.success("Zapisano na wydarzenie!", {
+          description: "Otrzymasz potwierdzenie na email",
+        });
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error("Błąd", {
+        description: error.message || "Nie udało się wykonać operacji",
+      });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   const handleDelete = () => {
-    if (!window.confirm("Czy na pewno chcesz usunąć to wydarzenie?")) return;
-
-    setIsDeleting(true);
     deleteEvent(
       {
         resource: "events",
@@ -142,509 +310,472 @@ export const EventsShow = () => {
           toast.success("Wydarzenie zostało usunięte");
           list("events");
         },
-        onError: () => {
-          toast.error("Błąd podczas usuwania wydarzenia");
-          setIsDeleting(false);
-        },
-      }
-    );
-  };
-
-  const handleSignUp = () => {
-    if (!identity) {
-      toast.error("Musisz być zalogowany");
-      return;
-    }
-
-    createParticipant(
-      {
-        resource: "event_participants",
-        values: {
-          event_id: record.id,
-          event_type: record.event_category,
-          participant_id: identity.id,
-          status: "registered",
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success("Zapisano na wydarzenie!");
-          queryResult.refetch();
-          window.location.reload();
-        },
-        onError: (error: any) => {
-          console.error("Błąd zapisu:", error);
-          toast.error("Nie udało się zapisać na wydarzenie");
+        onError: (error) => {
+          console.error("Delete error:", error);
+          toast.error("Nie udało się usunąć wydarzenia");
         },
       }
     );
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Link skopiowany do schowka");
-  };
-
-  const getEventIcon = (category: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      lesson: <Music className="w-4 h-4" />,
-      workshop: <Star className="w-4 h-4" />,
-      party: <Sparkles className="w-4 h-4" />,
-      outdoor: <MapPin className="w-4 h-4" />,
-      course: <TrendingUp className="w-4 h-4" />,
-    };
-    return icons[category] || <Calendar className="w-4 h-4" />;
-  };
-
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      lesson: "Lekcja",
-      workshop: "Warsztaty",
-      party: "Impreza",
-      outdoor: "Plener",
-      course: "Kurs",
-    };
-    return labels[category] || category;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      lesson: "bg-blue-100 text-blue-700",
-      workshop: "bg-purple-100 text-purple-700",
-      party: "bg-pink-100 text-pink-700",
-      outdoor: "bg-green-100 text-green-700",
-      course: "bg-orange-100 text-orange-700",
-    };
-    return colors[category] || "bg-gray-100 text-gray-700";
+    if (navigator.share) {
+      navigator.share({
+        title: record.title,
+        text: record.description,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link skopiowany do schowka");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header z akcjami */}
-        <div className="flex justify-between items-center mb-6">
-          <Button variant="ghost" size="sm" onClick={() => list("events")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Wróć do wydarzeń
-          </Button>
+    <SubPage>
+      <FlexBox>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => list("events")}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Wróć do listy
+        </Button>
 
+        {isOrganizer && (
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" onClick={handleShare}>
-              <Share2 className="w-4 h-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => edit("events", record.id)}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edytuj
             </Button>
-            {isOrganizer && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => edit("events", record.id)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash className="w-4 h-4" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Alert dla wydarzeń rozpoczynających się wkrótce */}
-        {isStartingSoon && !hasStarted && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-full">
-              <Clock className="w-5 h-5 text-red-600" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-red-900">
-                To wydarzenie rozpoczyna się{" "}
-                {hoursUntil === 0
-                  ? "wkrótce"
-                  : `za ${hoursUntil} godzin${hoursUntil === 1 ? "ę" : "y"}`}
-                !
-              </p>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Usuń
+            </Button>
           </div>
         )}
+      </FlexBox>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lewa kolumna - główne informacje (2/3 szerokości na dużych ekranach) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Główna karta */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge
-                        className={cn(
-                          "text-xs",
-                          getCategoryColor(record.event_category)
-                        )}
-                      >
-                        {getEventIcon(record.event_category)}
-                        <span className="ml-1">
-                          {getCategoryLabel(record.event_category)}
-                        </span>
-                      </Badge>
-                      {record.dance_styles && (
-                        <Badge variant="outline" className="text-xs">
-                          {record.dance_styles.name}
-                        </Badge>
-                      )}
-                      {userParticipation && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-100 text-green-700 text-xs"
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Zapisany
-                        </Badge>
-                      )}
-                    </div>
-                    <CardTitle className="text-2xl sm:text-3xl mb-2">
-                      {record.title}
-                    </CardTitle>
-                    <p className="text-gray-600">
-                      Organizuje:{" "}
-                      <span className="font-medium">{organizer.name}</span>
-                    </p>
-                  </div>
-                  {record.price_amount !== null &&
-                    record.price_amount !== undefined && (
-                      <div className="text-right">
-                        <p className="text-3xl font-bold text-purple-600">
-                          {record.price_amount === 0
-                            ? "FREE"
-                            : `${record.price_amount}`}
-                        </p>
-                        {record.price_amount > 0 && (
-                          <p className="text-sm text-gray-500">PLN</p>
-                        )}
-                      </div>
-                    )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {record.description && (
-                  <div className="prose prose-gray max-w-none">
-                    <p className="text-gray-700 whitespace-pre-wrap">
-                      {record.description}
-                    </p>
-                  </div>
+      {/* Nagłówek wydarzenia */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            {/* Typ i status */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="default" className="text-sm">
+                {getEventTypeIcon(record.event_type)}
+                <span className="ml-1">{getEventTypeLabel(record.event_type)}</span>
+              </Badge>
+              {getStatusBadge(record.status)}
+              {isPast && (
+                <Badge variant="secondary">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Zakończone
+                </Badge>
+              )}
+              {isOngoing && (
+                <Badge variant="default" className="bg-green-500">
+                  <Clock className="w-3 h-3 mr-1" />
+                  W trakcie
+                </Badge>
+              )}
+              {record.is_recurring && (
+                <Badge variant="outline">
+                  <Repeat className="w-3 h-3 mr-1" />
+                  Cykliczne
+                </Badge>
+              )}
+            </div>
+
+            {/* Tytuł */}
+            <h1 className="text-3xl font-bold">{record.title}</h1>
+
+            {/* Organizator */}
+            {record.organizer && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span>Organizator: {record.organizer.name}</span>
+                {record.organizer.is_verified && (
+                  <Badge variant="outline" className="text-xs">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Zweryfikowany
+                  </Badge>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Informacje o wydarzeniu */}
+      <GridBox>
+        {/* Główne informacje */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Opis */}
+          {record.description && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">
-                  Informacje o wydarzeniu
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="w-5 h-5" />
+                  Opis wydarzenia
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Data i czas */}
-                  <div className="flex gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg shrink-0">
-                      <Calendar className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">
-                        Data i godzina
-                      </p>
-                      <p className="font-medium">
-                        {format(
-                          new Date(record.start_datetime),
-                          "EEEE, d MMMM yyyy",
-                          { locale: pl }
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {format(new Date(record.start_datetime), "HH:mm")} -
-                        {format(new Date(record.end_datetime), "HH:mm")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Lokalizacja */}
-                  <div className="flex gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg shrink-0">
-                      <MapPin className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Miejsce</p>
-                      {record.location_type === "online" ? (
-                        <>
-                          <p className="font-medium">Wydarzenie online</p>
-                          {record.online_platform && (
-                            <p className="text-sm text-gray-600">
-                              Platforma: {record.online_platform}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {record.location_name && (
-                            <p className="font-medium">
-                              {record.location_name}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-600">
-                            {record.address}
-                            {record.city && `, ${record.city}`}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Uczestnicy */}
-                  <div className="flex gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg shrink-0">
-                      <Users className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Uczestnicy</p>
-                      <p className="font-medium">
-                        {record.current_participants}
-                        {record.max_participants &&
-                          ` / ${record.max_participants}`}{" "}
-                        osób
-                      </p>
-                      {spotsLeft !== null &&
-                        spotsLeft > 0 &&
-                        spotsLeft <= 5 && (
-                          <p className="text-sm text-orange-600 font-medium">
-                            Zostało tylko {spotsLeft} miejsc!
-                          </p>
-                        )}
-                      {isFull && (
-                        <p className="text-sm text-red-600 font-medium">
-                          Brak wolnych miejsc
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Poziom */}
-                  {record.skill_level_required && (
-                    <div className="flex gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg shrink-0">
-                        <Star className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Poziom</p>
-                        <p className="font-medium capitalize">
-                          {record.skill_level_required}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Wymagania */}
-                {record.requires_partner && (
-                  <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-orange-900">Wymagania</p>
-                        <p className="text-sm text-orange-800 mt-1">
-                          To wydarzenie wymaga przyjścia z partnerem tanecznym
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <p className="whitespace-pre-wrap">{record.description}</p>
               </CardContent>
             </Card>
+          )}
 
-            {/* Dodatkowe informacje */}
-            {(record.what_to_expect ||
-              record.cancellation_policy ||
-              (record.tags && record.tags.length > 0)) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Dodatkowe informacje
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {record.what_to_expect && (
-                    <div>
-                      <h4 className="font-medium mb-2">Czego się spodziewać</h4>
-                      <p className="text-sm text-gray-700">
-                        {record.what_to_expect}
+          {/* Szczegóły */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5" />
+                Szczegóły
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Data i czas */}
+              <div>
+                <p className="text-sm font-medium mb-1">Data i czas</p>
+                <div className="space-y-1">
+                  <p className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    {format(new Date(record.start_at), "EEEE, d MMMM yyyy", { locale: pl })}
+                  </p>
+                  <p className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    {format(new Date(record.start_at), "HH:mm")} - 
+                    {format(new Date(record.end_at), "HH:mm")}
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Lokalizacja */}
+              <div>
+                <p className="text-sm font-medium mb-1">Lokalizacja</p>
+                <Badge variant="outline" className="mb-2">
+                  {getLocationTypeLabel(record.location_type)}
+                </Badge>
+                
+                {record.location_type === 'online' ? (
+                  <div className="space-y-2 mt-2">
+                    {record.online_platform && (
+                      <p className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-muted-foreground" />
+                        {record.online_platform}
                       </p>
-                    </div>
-                  )}
-
-                  {record.cancellation_policy && (
-                    <div>
-                      <h4 className="font-medium mb-2">Polityka anulowania</h4>
-                      <p className="text-sm text-gray-700">
-                        {record.cancellation_policy}
-                      </p>
-                    </div>
-                  )}
-
-                  {record.tags && record.tags.length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-2">Tagi</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {record.tags.map((tag, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Prawa kolumna - sidebar (1/3 szerokości na dużych ekranach) */}
-          <div className="space-y-6">
-            {/* CTA Card */}
-            <Card
-              className={cn(
-                "sticky top-4",
-                userParticipation && "border-green-200 bg-green-50/50"
-              )}
-            >
-              <CardContent className="pt-6">
-                {!isOrganizer ? (
-                  <div className="space-y-3">
-                    {userParticipation ? (
-                      <>
-                        <div className="text-center mb-4">
-                          <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                          <p className="font-medium text-green-900">
-                            Jesteś zapisany na to wydarzenie
-                          </p>
-                        </div>
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          onClick={() => list("events")}
-                        >
-                          Zobacz inne wydarzenia
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          className="w-full"
-                          size="lg"
-                          onClick={handleSignUp}
-                          disabled={isFull || hasStarted || !identity}
-                        >
-                          {!identity
-                            ? "Zaloguj się aby się zapisać"
-                            : isFull
-                            ? "Brak miejsc"
-                            : hasStarted
-                            ? "Wydarzenie już się rozpoczęło"
-                            : "Zapisz się na wydarzenie"}
-                        </Button>
-                        {!identity && (
-                          <p className="text-xs text-gray-600 text-center">
-                            Musisz być zalogowany, aby zapisać się na wydarzenie
-                          </p>
-                        )}
-                      </>
+                    )}
+                    {record.online_link && (
+                      <a
+                        href={record.online_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-primary hover:underline"
+                      >
+                        <LinkIcon className="w-4 h-4" />
+                        Link do spotkania
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-3 text-center">
-                    <div className="p-3 bg-purple-100 rounded-full w-12 h-12 mx-auto flex items-center justify-center">
-                      <Star className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Zarządzasz tym wydarzeniem
-                    </p>
-                    <Button
-                      className="w-full"
-                      onClick={() => edit("events", record.id)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edytuj wydarzenie
-                    </Button>
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => list("events")}
-                    >
-                      Zobacz statystyki
-                    </Button>
+                  <div className="space-y-2 mt-2">
+                    {record.location_name && (
+                      <p className="font-medium">{record.location_name}</p>
+                    )}
+                    {record.address && (
+                      <p className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="w-4 h-4" />
+                        {record.address}
+                      </p>
+                    )}
+                    {record.city && (
+                      <p className="text-muted-foreground">{record.city}</p>
+                    )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Organizator */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Organizator</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3 mb-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={organizer.photo || undefined} />
-                    <AvatarFallback className="bg-purple-100 text-purple-600">
-                      {organizer.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{organizer.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {organizer.type === "dancer"
-                        ? "Instruktor tańca"
-                        : organizer.type === "school"
-                        ? "Szkoła tańca"
-                        : "Organizator"}
-                    </p>
+              {/* Styl tańca i poziom */}
+              {(record.dance_style || record.skill_level_min || record.skill_level_max) && (
+                <>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-4">
+                    {record.dance_style && (
+                      <div>
+                        <p className="text-sm font-medium mb-1">Styl tańca</p>
+                        <Badge variant="secondary">
+                          <Music className="w-3 h-3 mr-1" />
+                          {record.dance_style.name}
+                        </Badge>
+                      </div>
+                    )}
+                    
+                    {(record.skill_level_min || record.skill_level_max) && (
+                      <div>
+                        <p className="text-sm font-medium mb-1">Poziom</p>
+                        <p className="text-sm">
+                          {record.skill_level_min && getSkillLevelLabel(record.skill_level_min)}
+                          {record.skill_level_min && record.skill_level_max && 
+                            record.skill_level_min !== record.skill_level_max && ' - '}
+                          {record.skill_level_max && record.skill_level_min !== record.skill_level_max && 
+                            getSkillLevelLabel(record.skill_level_max)}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  Zobacz profil
-                </Button>
-              </CardContent>
-            </Card>
+                </>
+              )}
 
-            {/* Share Card */}
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm text-gray-600 mb-3 text-center">
-                  Podziel się tym wydarzeniem
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleShare}
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Skopiuj link
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              {/* Wymagania */}
+              {(record.requires_partner || record.age_min || record.age_max) && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium mb-2">Wymagania</p>
+                    <div className="space-y-1">
+                      {record.requires_partner && (
+                        <Badge variant="outline">
+                          <UserPlus className="w-3 h-3 mr-1" />
+                          Wymagany partner
+                        </Badge>
+                      )}
+                      {(record.age_min || record.age_max) && (
+                        <p className="text-sm text-muted-foreground">
+                          Wiek: {record.age_min || '0'} - {record.age_max || '99'} lat
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Linki */}
+              {(record.website_url || record.registration_url) && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium mb-2">Linki</p>
+                    <div className="space-y-2">
+                      {record.website_url && (
+                        <a
+                          href={record.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <Globe className="w-4 h-4" />
+                          Strona wydarzenia
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      {record.registration_url && (
+                        <a
+                          href={record.registration_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <LinkIcon className="w-4 h-4" />
+                          Rejestracja zewnętrzna
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </div>
+
+        {/* Panel boczny */}
+        <div className="space-y-6">
+          {/* Cena i rejestracja */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Udział</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Cena */}
+              <div>
+                <p className="text-sm font-medium mb-2">Cena</p>
+                {record.price > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-2xl font-bold">
+                      {record.price} {record.currency}
+                    </p>
+                    {record.early_bird_price && record.early_bird_deadline && 
+                     new Date(record.early_bird_deadline) > new Date() && (
+                      <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-md">
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          <CreditCard className="w-3 h-3 inline mr-1" />
+                          Early Bird: {record.early_bird_price} {record.currency}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          do {format(new Date(record.early_bird_deadline), "d MMM", { locale: pl })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Badge variant="default" className="bg-green-500">
+                    Bezpłatne
+                  </Badge>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Liczba miejsc */}
+              <div>
+                <p className="text-sm font-medium mb-2">Liczba miejsc</p>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    {record.participant_count} zapisanych
+                  </span>
+                  {record.max_participants && (
+                    <span className="text-sm text-muted-foreground">
+                      z {record.max_participants}
+                    </span>
+                  )}
+                </div>
+                
+                {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 5 && (
+                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
+                    Pozostało tylko {spotsLeft} {spotsLeft === 1 ? 'miejsce' : 'miejsca'}!
+                  </p>
+                )}
+                
+                {isFull && (
+                  <Badge variant="destructive" className="mt-2 w-full justify-center">
+                    Brak wolnych miejsc
+                  </Badge>
+                )}
+              </div>
+
+              {/* Przycisk rejestracji */}
+              {!isOrganizer && (
+                <>
+                  <Separator />
+                  <Button
+                    className="w-full"
+                    variant={userParticipation ? "outline" : "default"}
+                    disabled={!canRegister && !userParticipation || isRegistering}
+                    onClick={handleRegistration}
+                  >
+                    {isRegistering ? (
+                      "Przetwarzanie..."
+                    ) : userParticipation ? (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Wypisz się
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Zapisz się
+                      </>
+                    )}
+                  </Button>
+                  
+                  {!canRegister && !userParticipation && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      {isPast ? "Wydarzenie się zakończyło" :
+                       isFull ? "Brak wolnych miejsc" :
+                       record.status !== 'published' ? "Wydarzenie nie jest opublikowane" :
+                       "Rejestracja niedostępna"}
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Akcje */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Akcje</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleShare}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Udostępnij
+              </Button>
+              
+              <Button variant="outline" className="w-full">
+                <Heart className="w-4 h-4 mr-2" />
+                Dodaj do ulubionych
+              </Button>
+
+              {record.organizer && (
+                <Button variant="outline" className="w-full">
+                  <Mail className="w-4 h-4 mr-2" />
+                  Kontakt z organizatorem
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Informacje o wydarzeniu */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Informacje</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                Utworzono:{" "}
+                {format(new Date(record.created_at), "d MMM yyyy", { locale: pl })}
+              </p>
+              <p>
+                Ostatnia aktualizacja:{" "}
+                {format(new Date(record.updated_at), "d MMM yyyy", { locale: pl })}
+              </p>
+              <p>
+                ID wydarzenia: {record.id.slice(0, 8)}...
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </GridBox>
+
+      {/* Dialog potwierdzenia usunięcia */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Czy na pewno chcesz usunąć to wydarzenie?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ta akcja jest nieodwracalna. Wydarzenie "{record.title}" zostanie trwale usunięte
+              wraz ze wszystkimi zapisami uczestników.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń wydarzenie
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SubPage>
   );
 };

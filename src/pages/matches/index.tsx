@@ -9,8 +9,7 @@ export const matchesResource = {
   name: "matches",
   list: "/matches",
   meta: {
-    label: "Dopasowania",
-    icon: "HeartHandshake", // możesz użyć ikony
+    label: "Dopasowania"
   },
 };
 
