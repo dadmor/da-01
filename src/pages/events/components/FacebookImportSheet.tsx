@@ -32,6 +32,8 @@ import {
   ArrowRight,
   Copy,
   ExternalLink,
+  Info,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -246,14 +248,45 @@ Nie zapomnij wygodnych butów do tańca!`,
                 </p>
               </div>
 
-              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-4 space-y-3">
+              {/* Ograniczenia API Facebooka */}
+              <div className="rounded-lg bg-orange-50 border border-orange-200 p-4 space-y-3">
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                   <div className="space-y-2 text-sm">
-                    <p className="font-medium text-blue-900 dark:text-blue-100">
+                    <p className="font-medium text-orange-900">
+                      Ważne ograniczenia Facebook API
+                    </p>
+                    <ul className="space-y-2 text-orange-800">
+                      <li className="flex items-start gap-2">
+                        <span className="text-orange-600">•</span>
+                        <span>Możesz importować tylko wydarzenia <strong>publiczne</strong> ze stron, którymi zarządzasz</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-orange-600">•</span>
+                        <span>Wydarzenia z grup Facebook <strong>nie są dostępne</strong> przez API</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-orange-600">•</span>
+                        <span>Wydarzenia prywatne lub z ograniczonym dostępem <strong>nie mogą być importowane</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-orange-600">•</span>
+                        <span>Facebook ograniczył dostęp do API wydarzeń ze względów bezpieczeństwa</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instrukcje */}
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-blue-900">
                       Jak znaleźć link do wydarzenia?
                     </p>
-                    <ol className="space-y-1 text-blue-800 dark:text-blue-200">
+                    <ol className="space-y-1 text-blue-800">
                       <li>1. Otwórz wydarzenie na Facebooku</li>
                       <li>2. Kliknij przycisk "Udostępnij"</li>
                       <li>3. Wybierz "Kopiuj link"</li>
@@ -263,35 +296,18 @@ Nie zapomnij wygodnych butów do tańca!`,
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Przykładowe wydarzenia do testów:</p>
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
-                    onClick={() => setEventUrl("https://www.facebook.com/events/123456789")}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">Salsa Night</p>
-                        <p className="text-xs text-muted-foreground">Potańcówka • Warszawa</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
-                    onClick={() => setEventUrl("https://www.facebook.com/events/987654321")}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">Warsztaty Bachaty</p>
-                        <p className="text-xs text-muted-foreground">Warsztaty • Online</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </button>
+              {/* Alternatywa */}
+              <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                <div className="flex items-start gap-2">
+                  <Shield className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-gray-900">
+                      Alternatywne rozwiązanie
+                    </p>
+                    <p className="text-gray-700">
+                      Jeśli nie możesz zaimportować wydarzenia automatycznie, możesz skopiować dane ręcznie z Facebooka i utworzyć wydarzenie używając standardowego formularza.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -320,7 +336,7 @@ Nie zapomnij wygodnych butów do tańca!`,
               <ScrollArea className="h-[calc(100vh-240px)] pr-4">
                 <div className="space-y-6">
                   {/* Podgląd z Facebooka */}
-                  <div className="rounded-lg border bg-accent/50 p-4">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Facebook className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium">Dane z Facebooka</span>
