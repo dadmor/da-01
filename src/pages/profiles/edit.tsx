@@ -9,48 +9,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, MapPin, Camera, X } from "lucide-react";
+import { User, MapPin, Camera, X, Music, Plus, Trash2, GraduationCap } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Button, Input, Textarea, Switch } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 import { FlexBox, GridBox } from "@/components/shared";
 import { Lead } from "@/components/reader";
 import { Form, FormActions, FormControl } from "@/components/form";
 import { SubPage } from "@/components/layout";
 import { supabaseClient } from "@/utility/supabaseClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserRecord, DanceStyle, UserDanceStyle } from "./interface";
 
-interface UserRecord {
-  id: string;
-  email: string;
-  name: string;
-  bio?: string;
-  profile_photo_url?: string;
-  birth_date?: string;
-  height?: number;
-  location_lat?: number;
-  location_lng?: number;
-  city?: string;
-  search_radius_km?: number;
-  is_trainer?: boolean;
-  is_school_owner?: boolean;
-  is_verified?: boolean;
-  is_active?: boolean;
-  is_banned?: boolean;
-  show_age?: boolean;
-  show_exact_location?: boolean;
-  visibility?: string;
-  last_seen_at?: string;
-  created_at: string;
-  updated_at: string;
-}
+
 
 export const ProfileEdit = () => {
   const { data: identity, isLoading: isLoadingIdentity } = useGetIdentity<any>();
   const [userData, setUserData] = useState<UserRecord | null>(null);
+  const [userDanceStyles, setUserDanceStyles] = useState<UserDanceStyle[]>([]);
+  const [availableDanceStyles, setAvailableDanceStyles] = useState<DanceStyle[]>([]);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showAddDanceStyle, setShowAddDanceStyle] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { mutate: updateUser } = useUpdate();
@@ -70,6 +52,7 @@ export const ProfileEdit = () => {
       setIsLoadingUser(true);
       setError(null);
       
+      // Pobierz dane użytkownika
       supabaseClient
         .from('users')
         .select('*')
@@ -86,7 +69,38 @@ export const ProfileEdit = () => {
               setPhotoPreview(data.profile_photo_url);
             }
           }
+        });
+
+      // Pobierz style tańca użytkownika
+      supabaseClient
+        .from('user_dance_styles')
+        .select(`
+          *,
+          dance_style:dance_styles(*)
+        `)
+        .eq('user_id', identity.id)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching user dance styles:', error);
+          } else if (data) {
+            setUserDanceStyles(data);
+          }
           setIsLoadingUser(false);
+        });
+
+      // Pobierz dostępne style tańca
+      supabaseClient
+        .from('dance_styles')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching dance styles:', error);
+          } else if (data) {
+            setAvailableDanceStyles(data);
+          }
         });
     }
   }, [identity?.id, reset]);
@@ -199,6 +213,68 @@ export const ProfileEdit = () => {
       alert('Nie udało się usunąć zdjęcia. Spróbuj ponownie.');
     } finally {
       setIsUploadingPhoto(false);
+    }
+  };
+
+  // Funkcja do dodawania stylu tańca
+  const handleAddDanceStyle = async () => {
+    if (!identity?.id) return;
+
+    const danceStyleId = watch("new_dance_style_id");
+    const skillLevel = watch("new_skill_level");
+    const yearsExperience = watch("new_years_experience");
+    const isTeaching = watch("new_is_teaching");
+
+    if (!danceStyleId || !skillLevel) return;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('user_dance_styles')
+        .insert({
+          user_id: identity.id,
+          dance_style_id: danceStyleId,
+          skill_level: skillLevel,
+          years_experience: yearsExperience || null,
+          is_teaching: isTeaching || false
+        })
+        .select(`
+          *,
+          dance_style:dance_styles(*)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setUserDanceStyles([...userDanceStyles, data]);
+        setShowAddDanceStyle(false);
+        setValue("new_dance_style_id", "");
+        setValue("new_skill_level", "");
+        setValue("new_years_experience", "");
+        setValue("new_is_teaching", false);
+      }
+    } catch (error) {
+      console.error('Error adding dance style:', error);
+      alert('Nie udało się dodać stylu tańca. Spróbuj ponownie.');
+    }
+  };
+
+  // Funkcja do usuwania stylu tańca
+  const handleRemoveDanceStyle = async (id: string) => {
+    if (!confirm('Czy na pewno chcesz usunąć ten styl tańca?')) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('user_dance_styles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setUserDanceStyles(userDanceStyles.filter(uds => uds.id !== id));
+    } catch (error) {
+      console.error('Error removing dance style:', error);
+      alert('Nie udało się usunąć stylu tańca. Spróbuj ponownie.');
     }
   };
 
@@ -546,6 +622,176 @@ export const ProfileEdit = () => {
                   </FlexBox>
                 </FormControl>
               </GridBox>
+            </CardContent>
+          </Card>
+
+          {/* Style tańca */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Music className="w-5 h-5" />
+                  Style tańca
+                </span>
+                {userDanceStyles.length > 0 && (
+                  <Badge variant="secondary">{userDanceStyles.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Lista stylów tańca */}
+              {userDanceStyles.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {userDanceStyles.map((uds) => (
+                    <div
+                      key={uds.id}
+                      className="p-3 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {uds.dance_style?.name || 'Nieznany styl'}
+                          </p>
+                          {uds.dance_style?.category && (
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {uds.dance_style.category}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveDanceStyle(uds.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="capitalize">
+                          {uds.skill_level}
+                        </Badge>
+                        {uds.is_teaching && (
+                          <Badge variant="secondary" className="text-xs">
+                            <GraduationCap className="w-3 h-3 mr-1" />
+                            Uczę
+                          </Badge>
+                        )}
+                        {uds.years_experience && (
+                          <span className="text-sm text-muted-foreground">
+                            • {uds.years_experience} {uds.years_experience === 1 ? 'rok' : uds.years_experience < 5 ? 'lata' : 'lat'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Formularz dodawania nowego stylu */}
+              {showAddDanceStyle ? (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                  <GridBox variant="1-2-2">
+                    <FormControl label="Styl tańca" required>
+                      <Select
+                        value={watch("new_dance_style_id") || ""}
+                        onValueChange={(value) => setValue("new_dance_style_id", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz styl" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableDanceStyles
+                            .filter(ds => !userDanceStyles.some(uds => uds.dance_style_id === ds.id))
+                            .map(ds => (
+                              <SelectItem key={ds.id} value={ds.id}>
+                                {ds.name} {ds.category && `(${ds.category})`}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl label="Poziom zaawansowania" required>
+                      <Select
+                        value={watch("new_skill_level") || ""}
+                        onValueChange={(value) => setValue("new_skill_level", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz poziom" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="beginner">Początkujący</SelectItem>
+                          <SelectItem value="intermediate">Średniozaawansowany</SelectItem>
+                          <SelectItem value="advanced">Zaawansowany</SelectItem>
+                          <SelectItem value="professional">Profesjonalny</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl label="Lata doświadczenia">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="50"
+                        {...register("new_years_experience", {
+                          valueAsNumber: true,
+                          min: 0,
+                          max: 50
+                        })}
+                      />
+                    </FormControl>
+
+                    <FormControl label="Uczę tego stylu">
+                      <FlexBox variant="start">
+                        <Switch
+                          checked={watch("new_is_teaching") || false}
+                          onCheckedChange={(checked) => setValue("new_is_teaching", checked)}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          Zaznacz jeśli uczysz tego stylu
+                        </span>
+                      </FlexBox>
+                    </FormControl>
+                  </GridBox>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddDanceStyle}
+                      disabled={!watch("new_dance_style_id") || !watch("new_skill_level")}
+                    >
+                      Dodaj styl
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowAddDanceStyle(false);
+                        setValue("new_dance_style_id", "");
+                        setValue("new_skill_level", "");
+                        setValue("new_years_experience", "");
+                        setValue("new_is_teaching", false);
+                      }}
+                    >
+                      Anuluj
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddDanceStyle(true)}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Dodaj styl tańca
+                </Button>
+              )}
             </CardContent>
           </Card>
         </GridBox>
