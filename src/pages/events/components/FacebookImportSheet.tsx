@@ -62,6 +62,62 @@ interface FacebookEventPreview {
   };
 }
 
+// Funkcja do generowania losowej nazwy wydarzenia
+const generateRandomEventTitle = () => {
+  const danceStyles = [
+    "Salsa",
+    "Bachata",
+    "Tango",
+    "Kizomba",
+    "Zumba",
+    "Flamenco",
+    "Hip Hop",
+    "Swing",
+    "Latin",
+    "Samba",
+  ];
+  const eventTypes = [
+    "Noc",
+    "Wieczór",
+    "Potańcówka",
+    "Impreza",
+    "Festiwal",
+    "Maraton",
+    "Party",
+    "Jam",
+  ];
+  const locations = [
+    "Klub Havana",
+    "Studio Tańca Ritmo",
+    "Sala Balowa",
+    "Centrum Tańca",
+    "Klub Latino",
+    "Scena Viva",
+    "Pałac Kultury",
+    "Ogród Taneczny",
+  ];
+  const themes = [
+    "Gorąca",
+    "Latynoska",
+    "Karaibska",
+    "Namiętna",
+    "Energetyczna",
+    "Kolorowa",
+    "",
+    "Klasyczna",
+  ];
+
+  // Losowy wybór elementów
+  const randomDanceStyle = danceStyles[Math.floor(Math.random() * danceStyles.length)];
+  const randomEventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+  const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+  const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+
+  // Składanie nazwy z losowych elementów
+  const prefix = randomTheme ? `${randomTheme} ` : "";
+  return `${prefix}${randomDanceStyle} ${randomEventType} w ${randomLocation}`;
+};
+
 export const FacebookImportSheet = ({
   open,
   onOpenChange,
@@ -113,14 +169,14 @@ export const FacebookImportSheet = ({
 
       // Przykładowe dane wydarzenia z Facebooka (zamokowane)
       const mockEventData: FacebookEventPreview = {
-        title: "Salsa Night w Klubie Havana",
-        description: `🎉 Zapraszamy na gorącą noc pełną salsy! 🎉
+        title: generateRandomEventTitle(),
+        description: `🎉 Zapraszamy na gorącą noc pełną tańca! 🎉
 
 Dołącz do nas na niezapomnianą potańcówkę w rytmach latynoskich!
 
 W programie:
-✨ 20:00-21:00 - Warsztaty salsy dla początkujących
-✨ 21:00-02:00 - Potańcówka z DJ Carlos
+✨ 20:00-21:00 - Warsztaty dla początkujących
+✨ 21:00-02:00 - Potańcówka z DJ-em
 ✨ Pokazy taneczne
 ✨ Konkursy z nagrodami
 
@@ -141,11 +197,11 @@ Nie zapomnij wygodnych butów do tańca!`,
       };
 
       setEventPreview(mockEventData);
-      
+
       // Wypełnij formularz danymi z Facebooka
       const startDate = new Date(mockEventData.start_time);
       const endDate = new Date(mockEventData.end_time);
-      
+
       setValue("title", mockEventData.title);
       setValue("description", mockEventData.description);
       setValue("event_date", format(startDate, "yyyy-MM-dd"));
@@ -155,7 +211,7 @@ Nie zapomnij wygodnych butów do tańca!`,
       setValue("location_name", mockEventData.location?.name || "");
       setValue("address", mockEventData.location?.address || "");
       setValue("city", mockEventData.location?.city || "");
-      
+
       setStep("preview");
       toast.success("Dane wydarzenia pobrane pomyślnie!");
     } catch (error) {
@@ -170,19 +226,19 @@ Nie zapomnij wygodnych butów do tańca!`,
 
   const handleImport = async (data: any) => {
     setStep("importing");
-    
+
     try {
       // Symulacja importu
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      
+
       toast.success("Wydarzenie zaimportowane!", {
         description: "Możesz teraz dokończyć konfigurację wydarzenia",
       });
-      
+
       if (onImportSuccess) {
         onImportSuccess(data);
       }
-      
+
       // Reset stanu
       setStep("input");
       setEventUrl("");
