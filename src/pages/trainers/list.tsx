@@ -113,7 +113,12 @@ export const TrainersList = () => {
         // Pobierz style tańca
         const { data: styles, error: stylesError } = await supabaseClient
           .from('user_dance_styles')
-          .select('user_id, dance_styles(name)')
+          .select(`
+            user_id,
+            dance_styles!inner (
+              name
+            )
+          `)
           .in('user_id', trainerIds)
           .eq('is_teaching', true);
 
@@ -122,8 +127,9 @@ export const TrainersList = () => {
             if (!acc[item.user_id]) {
               acc[item.user_id] = [];
             }
-            if (item.dance_styles?.name) {
-              acc[item.user_id].push(item.dance_styles.name);
+            const styleName = (item.dance_styles as any)?.name;
+            if (styleName) {
+              acc[item.user_id].push(styleName);
             }
             return acc;
           }, {} as Record<string, string[]>);
@@ -331,7 +337,7 @@ export const TrainersList = () => {
                   {/* Style tańca */}
                   {teachingStyles.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {teachingStyles.slice(0, 3).map((style, index) => (
+                      {teachingStyles.slice(0, 3).map((style: string, index: number) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {style}
                         </Badge>

@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
-  Users,
+  Users,    
   Award,
   Video,
   Check,
@@ -96,13 +96,18 @@ export const TrainerBooking = () => {
         // Style tańca trenera
         const { data: styles, error: stylesError } = await supabaseClient
           .from('user_dance_styles')
-          .select('dance_styles(name), skill_level')
+          .select(`
+            skill_level,
+            dance_styles!inner (
+              name
+            )
+          `)
           .eq('user_id', trainerId)
           .eq('is_teaching', true);
 
         if (!stylesError && styles) {
           setDanceStyles(styles.map(s => ({
-            style_name: s.dance_styles?.name || '',
+            style_name: (s.dance_styles as any)?.name || '',
             skill_level: s.skill_level
           })));
         }

@@ -103,7 +103,7 @@ export const DanceSchoolsEdit = () => {
 
   const handleFormSubmit = async (data: any) => {
     try {
-      let logoUrl = record.logo_url;
+      let logoUrl = record?.logo_url;
       if (logoFile) {
         logoUrl = await uploadLogo(logoFile);
       }
