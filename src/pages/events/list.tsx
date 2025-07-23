@@ -70,7 +70,8 @@ interface Event {
   registration_url?: string;
   min_participants: number;
   max_participants?: number;
-  participant_count: number;
+  participant_count: number; // To teraz pochodzi z widoku
+  waitlist_count: number; // Nowe pole z widoku
   skill_level_min?: string;
   skill_level_max?: string;
   price: number;
@@ -99,7 +100,7 @@ export const EventsList = () => {
     pageSize,
     setFilters,
   } = useTable({
-    resource: "events",
+    resource: "v_events_with_counts", // ZMIANA: używamy widoku zamiast tabeli
     pagination: {
       pageSize: 12,
     },
@@ -442,7 +443,12 @@ export const EventsList = () => {
                         /{event.max_participants}
                       </span>
                     )}
-                    {isFull && (
+                    {event.waitlist_count > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        +{event.waitlist_count} na liście
+                      </Badge>
+                    )}
+                    {isFull && event.waitlist_count === 0 && (
                       <Badge variant="destructive" className="ml-1 text-xs">
                         Brak miejsc
                       </Badge>
@@ -487,4 +493,4 @@ export const EventsList = () => {
       />
     </SubPage>
   );
-};  
+};

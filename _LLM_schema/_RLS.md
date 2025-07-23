@@ -1,5 +1,5 @@
 # ROW LEVEL SECURITY (RLS) POLICIES
-Generated: 2025-07-23 16:35:35.716247+00
+Generated: 2025-07-23 20:31:59.109304+00
 
 ## 📊 RLS STATUS BY TABLE
 
@@ -8,7 +8,7 @@ Generated: 2025-07-23 16:35:35.716247+00
 | conversation_participants | ✅ ENABLED | 4 | INSERT, SELECT |
 | conversations | ✅ ENABLED | 1 | SELECT |
 | dance_styles | ✅ ENABLED | 1 | SELECT |
-| event_participants | ✅ ENABLED | 3 | INSERT, SELECT, UPDATE |
+| event_participants | ✅ ENABLED | 4 | DELETE, INSERT, SELECT, UPDATE |
 | events | ✅ ENABLED | 4 | DELETE, INSERT, SELECT, UPDATE |
 | favorite_profiles | ✅ ENABLED | 0 | None |
 | likes | ✅ ENABLED | 3 | DELETE, INSERT, SELECT |
@@ -246,6 +246,25 @@ FOR UPDATE
 TO PUBLIC
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
+```
+
+### Policy: `Users can delete own participation`
+- **Command**: DELETE
+- **Type**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: 
+```sql
+user_id = auth.uid()
+```
+
+**Full Definition**:
+```sql
+CREATE POLICY "Users can delete own participation"
+ON public.event_participants
+AS PERMISSIVE
+FOR DELETE
+TO PUBLIC
+USING (user_id = auth.uid());
 ```
 
 ## Table: `events`

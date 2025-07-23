@@ -1,5 +1,5 @@
 # DATABASE TRIGGERS AND FUNCTIONS
-Generated: 2025-07-23 16:35:26.570234+00
+Generated: 2025-07-23 20:31:48.414679+00
 Filter: Only triggers with prefix "trg_" and functions with prefix "fn_"
 
 ## TRIGGERS (prefix: trg_)
