@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Loader2, Check, Mail, Shield, User, AlertTriangle, UserCheck } from "lucide-react";
+import { ArrowLeft, Loader2, Check, Mail, User, AlertTriangle, UserCheck } from "lucide-react";
 import { NarrowCol } from "@/components/layout/NarrowCol";
 import { Lead } from "@/components/reader";
 import { useRegistration } from "@/utility/auth/useRegistration"; // Import custom hook
@@ -20,46 +20,30 @@ export const RegisterStep3: React.FC = () => {
     processData
   } = useRegistration();
 
-  const getRoleIcon = (role: string) => {
-    return role === "auditor" ? Shield : User;
-  };
-
-  const getRoleLabel = (role: string) => {
-    return role === "auditor" ? "Auditor" : 
-           role === "beneficiary" ? "Beneficjent" : 
-           role === "contractor" ? "Wykonawca" : 
-           "Nieznana rola";
-  };
-
   // Check if data exists
   if (!processData || !processData.email) {
     return (
-     <>
-     
-     
-      <Lead title="Rejestracja" description="Błąd - brak danych" />
-     <Alert variant="destructive">
-       <AlertTriangle className="h-4 w-4" />
-       <AlertDescription>
-         Brak danych rejestracji. Rozpocznij proces od początku.
-       </AlertDescription>
-     </Alert>
-     <Button onClick={() => navigate("/register/step1")} className="mt-4">
-       Wróć do kroku 1
-     </Button></>
-       
-    
+      <NarrowCol>
+        <Lead title="Rejestracja" description="Błąd - brak danych" />
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Brak danych rejestracji. Rozpocznij proces od początku.
+          </AlertDescription>
+        </Alert>
+        <Button onClick={() => navigate("/register/step1")} className="mt-4">
+          Wróć do kroku 1
+        </Button>
+      </NarrowCol>
     );
   }
 
   return (
     <NarrowCol>
-
-<div className="flex items-start gap-5 ">
+      <div className="flex items-start gap-5 ">
         <UserCheck className="mt-2 bg-white rounded-full p-2 w-12 h-12" />
         <Lead title={`Rejestracja`} description={`3 z 4 Potwierdzenie danych`} />
       </div>
-      
 
       {isSuccess && (
         <Alert className="mb-4 border-green-200 bg-green-50">
@@ -87,8 +71,7 @@ export const RegisterStep3: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-
-        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-800 font-medium">
               Co się stanie:
             </p>
@@ -109,19 +92,13 @@ export const RegisterStep3: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              {React.createElement(getRoleIcon(processData.role as string), {
-                className: "h-5 w-5 text-gray-400",
-              })}
+              <User className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm font-medium">Rola</p>
-                <p className="text-sm text-gray-600">
-                  {getRoleLabel(processData.role as string)}
-                </p>
+                <p className="text-sm font-medium">Imię i nazwisko</p>
+                <p className="text-sm text-gray-600">{processData.name}</p>
               </div>
             </div>
           </div>
-
-         
 
           {error && !isSuccess && (
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">

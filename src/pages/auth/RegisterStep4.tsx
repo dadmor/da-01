@@ -9,7 +9,6 @@ import {
   Mail, 
   ArrowRight, 
   RefreshCw,
-  Shield,
   User,
   Clock
 } from "lucide-react";
@@ -25,7 +24,7 @@ export const RegisterStep4: React.FC = () => {
 
   const processData = getData("registration");
   const email = processData?.email || "user@example.com";
-  const role = processData?.role || "beneficiary";
+  const name = processData?.name || "Użytkownik";
 
   // ✅ Wyczyść dane po 30 sekundach lub gdy użytkownik przejdzie do logowania
   React.useEffect(() => {
@@ -54,14 +53,6 @@ export const RegisterStep4: React.FC = () => {
     // ✅ Wyczyść dane przy przejściu do logowania
     unregister("registration", "data");
     navigate("/login");
-  };
-
-  const getRoleIcon = (role: string) => {
-    return role === "auditor" ? Shield : User;
-  };
-
-  const getRoleLabel = (role: string) => {
-    return role === "auditor" ? "Auditor - Audytor systemu" : "Beneficiary - Użytkownik końcowy";
   };
 
   return (
@@ -107,12 +98,10 @@ export const RegisterStep4: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            {React.createElement(getRoleIcon(role), {
-              className: "h-5 w-5 text-gray-400",
-            })}
+            <User className="h-5 w-5 text-gray-400" />
             <div>
-              <p className="text-sm font-medium">Rola w systemie</p>
-              <p className="text-sm text-gray-600">{getRoleLabel(role)}</p>
+              <p className="text-sm font-medium">Imię i nazwisko</p>
+              <p className="text-sm text-gray-600">{name}</p>
             </div>
           </div>
         </CardContent>

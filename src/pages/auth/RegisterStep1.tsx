@@ -1,4 +1,4 @@
-// RegisterStep1.tsx - POPRAWIONA WERSJA
+// RegisterStep1.tsx - POPRAWIONA WERSJA Z IMIENIEM I NAZWISKIEM
 import { NarrowCol } from "@/components/layout/NarrowCol";
 import { Lead } from "@/components/reader";
 import { SchemaForm } from "@/components/SchemaForm";
@@ -26,24 +26,22 @@ export const RegisterStep1: React.FC = () => {
               title: "Email",
               placeholder: "przykład@email.com",
             },
-            role: {
-              type: "select",
-              title: "Wybierz rolę",
-              placeholder: "Wybierz swoją rolę",
-              options: [
-                {
-                  value: "beneficiary",
-                  label: "Beneficjent - zakładający zlecenie",
-                },
-                { value: "auditor", label: "Auditor - opiniujący zlecenie" },
-                {
-                  value: "contractor",
-                  label: "Wykonawca - realizujący zlecenie",
-                },
-              ],
+            name: {
+              type: "text",
+              title: "Imię i nazwisko",
+              placeholder: "Jan Kowalski",
             },
           },
-          required: ["email", "role"],
+          required: ["email", "name"],
+          validation: (data: any) => {
+            if (data.name && data.name.trim().length < 3) {
+              return "Imię i nazwisko musi mieć co najmniej 3 znaki";
+            }
+            if (data.name && !data.name.includes(" ")) {
+              return "Podaj zarówno imię jak i nazwisko";
+            }
+            return null;
+          },
         },
         step2: {
           title: "Hasło",

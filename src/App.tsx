@@ -16,7 +16,8 @@ import { danceStylesResource, danceStylesRoutes } from "./pages/dance-styles";
 import { matchesResource, matchesRoutes } from "./pages/matches";
 import { dancersResource, dancersRoutes } from "./pages/dancers";
 import { eventsResource, eventsRoutes } from "./pages/events";
-import { trainersResource, trainersRoutes } from "./pages/trainers"; // <-- NOWY IMPORT
+import { trainersResource, trainersRoutes } from "./pages/trainers";
+import { chatResource, chatRoutes } from "./pages/chat"; // <-- NOWY IMPORT
 
 import { authRoutes } from "./pages/auth";
 import LandingPage from "./pages/Landing";
@@ -32,7 +33,8 @@ function App() {
         resources={[
           dancersResource,     
           eventsResource,
-          trainersResource,    // <-- DODANY RESOURCE
+          chatResource,        // <-- DODANY RESOURCE (umieściłem go wyżej, bo to ważna funkcja)
+          trainersResource,    
           profilesResource,    
           matchesResource,     
           danceStylesResource, 
@@ -70,7 +72,8 @@ function App() {
             {...matchesRoutes}
             {...dancersRoutes}
             {...eventsRoutes}
-            {...trainersRoutes}  {/* <-- DODANE TRASY */}
+            {...trainersRoutes}
+            {...chatRoutes}      {/* <-- DODANE TRASY */}
 
             {/* Catch all dla nieznanych tras */}
             <Route path="*" element={<ErrorComponent />} />
