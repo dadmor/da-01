@@ -15,7 +15,8 @@ import { profilesResource, profilesRoutes } from "./pages/profiles";
 import { danceStylesResource, danceStylesRoutes } from "./pages/dance-styles";
 import { matchesResource, matchesRoutes } from "./pages/matches";
 import { dancersResource, dancersRoutes } from "./pages/dancers";
-import { eventsResource, eventsRoutes } from "./pages/events"; // <-- DODAJ TEN IMPORT
+import { eventsResource, eventsRoutes } from "./pages/events";
+import { trainersResource, trainersRoutes } from "./pages/trainers"; // <-- NOWY IMPORT
 
 import { authRoutes } from "./pages/auth";
 import LandingPage from "./pages/Landing";
@@ -30,13 +31,11 @@ function App() {
         routerProvider={routerBindings}
         resources={[
           dancersResource,     
-          eventsResource,      
+          eventsResource,
+          trainersResource,    // <-- DODANY RESOURCE
           profilesResource,    
           matchesResource,     
           danceStylesResource, 
-         
-          
-          
         ]}
         options={{
           syncWithLocation: true,
@@ -70,7 +69,8 @@ function App() {
             {...danceStylesRoutes}
             {...matchesRoutes}
             {...dancersRoutes}
-            {...eventsRoutes}  {/* <-- DODAJ TE TRASY */}
+            {...eventsRoutes}
+            {...trainersRoutes}  {/* <-- DODANE TRASY */}
 
             {/* Catch all dla nieznanych tras */}
             <Route path="*" element={<ErrorComponent />} />
