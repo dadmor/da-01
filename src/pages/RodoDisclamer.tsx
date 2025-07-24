@@ -1,28 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Info, X } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 const RodoDisclaimer = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenDisclaimer, setHasSeenDisclaimer] = useState(false);
 
   useEffect(() => {
-    // Sprawdź czy użytkownik już widział disclaimer
-    // W środowisku Claude.ai używamy tylko state
-    const timer = setTimeout(() => {
-      if (!hasSeenDisclaimer) {
-        setShowPopup(true);
-      }
-    }, 100);
+    // Sprawdź w localStorage czy użytkownik już zaakceptował
+    const accepted = localStorage.getItem('disclaimerAccepted');
     
-    return () => clearTimeout(timer);
-  }, [hasSeenDisclaimer]);
+    if (accepted === 'true') {
+      setHasSeenDisclaimer(true);
+    } else {
+      // Jeśli nie zaakceptował, pokaż popup po 100ms
+      const timer = setTimeout(() => {
+        setShowPopup(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleAccept = () => {
     setShowPopup(false);
     setHasSeenDisclaimer(true);
+    // Zapisz w localStorage, że użytkownik zaakceptował
+    localStorage.setItem('disclaimerAccepted', 'true');
   };
 
   const handleReject = () => {
+    // WAŻNE: Usuń z localStorage informację o akceptacji
+    // aby przy następnej wizycie znowu pokazał się komunikat RODO
+    localStorage.removeItem('disclaimerAccepted');
     // Przekieruj do Google
     window.location.href = 'https://www.google.com';
   };
@@ -37,7 +46,7 @@ const RodoDisclaimer = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-center gap-2">
           <Info className="w-4 h-4" />
           <span className="text-sm font-light tracking-wide">
-            Informacja o przetwarzaniu danych osobowych
+            DANCEHUB (SYSTEM DEMONSTRACYJNY). Informacja o przetwarzaniu danych osobowych
           </span>
         </div>
       </div>
@@ -47,19 +56,12 @@ const RodoDisclaimer = () => {
         <div className="fixed inset-0 bg-purple-900 bg-opacity-40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-pink-50 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-pink-100">
             <div className="p-6">
-              {/* Nagłówek z przyciskiem zamknięcia */}
-              <div className="flex justify-between items-start mb-6">
+              {/* Nagłówek */}
+              <div className="mb-6">
                 <h2 className="text-2xl font-light text-purple-800 tracking-tight">
                   <Info className="inline-block mr-2 mb-1 text-purple-600" size={24} />
                   Informacja o danych osobowych
                 </h2>
-                <button 
-                  onClick={handleReject}
-                  className="text-purple-400 hover:text-purple-600 transition-colors p-1 rounded-lg hover:bg-purple-100"
-                  aria-label="Zamknij - nie akceptuję"
-                >
-                  <X size={24} />
-                </button>
               </div>
 
               <div className="space-y-4">
