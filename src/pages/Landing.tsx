@@ -5,16 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
-  Globe,
-  Zap,
-  Shield,
-  TrendingUp,
   Sparkles,
-  Target,
-  Layers,
-  Clock,
   CheckCircle2,
-  BarChart,
   Users,
   Calendar,
   Heart,

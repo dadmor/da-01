@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import { NarrowCol } from "@/components/layout/NarrowCol";
 import { useLoginForm } from "@/utility/auth/useLoginForm";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, Navigate } from "react-router-dom";
 import { Form, FormActions, FormControl } from "@/components/form";
+import { useIsAuthenticated, useGetIdentity } from "@refinedev/core";
+import { User } from "@/utility/auth/authProvider";
 
 export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -34,6 +36,10 @@ export const LoginPage: React.FC = () => {
     error,
     handleSubmit,
   } = useLoginForm();
+
+  // DODANE: Sprawdzanie autentykacji
+  const { data: isAuthenticated, isLoading: authLoading } = useIsAuthenticated();
+  const { data: user, isLoading: userLoading } = useGetIdentity<User>();
 
   // Sprawdź parametry URL dla komunikatów
   const verified = searchParams.get("verified") === "true";
@@ -68,6 +74,25 @@ export const LoginPage: React.FC = () => {
     }
     return undefined;
   };
+
+  // DODANE: Loader podczas sprawdzania autentykacji
+  if (authLoading || userLoading) {
+    return (
+      <NarrowCol>
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </CardContent>
+        </Card>
+      </NarrowCol>
+    );
+  }
+
+  // DODANE: Przekierowanie jeśli zalogowany
+  if (isAuthenticated && user) {
+    const redirectPath = user.role ? `/${user.role}` : "/profiles";
+    return <Navigate to={redirectPath} replace />;
+  }
 
   return (
     <NarrowCol>

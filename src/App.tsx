@@ -33,11 +33,12 @@ function App() {
         resources={[
           dancersResource,     
           eventsResource,
-          chatResource,        // <-- DODANY RESOURCE (umieściłem go wyżej, bo to ważna funkcja)
+             
           trainersResource,    
           profilesResource,    
           matchesResource,     
           danceStylesResource, 
+          chatResource,   
         ]}
         options={{
           syncWithLocation: true,
