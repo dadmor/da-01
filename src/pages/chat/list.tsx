@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useTable, useGetIdentity, useSubscription } from "@refinedev/core";
+import { useTable, useGetIdentity, useSubscription, useCustom } from "@refinedev/core";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,88 +25,78 @@ import { cn } from "@/utility";
 import { format, isToday, isYesterday } from "date-fns";
 import { pl } from "date-fns/locale";
 
-interface Participant {
-  user_id: string;
-  user: {
-    id: string;
-    name: string;
-    profile_photo_url?: string;
-    last_seen_at?: string;
-    is_active: boolean;
-  };
-  unread_count: number;
-  last_read_at?: string;
-}
-
-interface Conversation {
-  id: string;
-  created_at: string;
-  last_message_at?: string;
-  last_message_preview?: string;
-  participants: Participant[];
-}
-
-interface Message {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  is_edited: boolean;
-  edited_at?: string;
-  is_deleted: boolean;
-  deleted_at?: string;
-  sender?: {
-    name: string;
-    profile_photo_url?: string;
-  };
-  reads?: {
-    user_id: string;
-    read_at: string;
-  }[];
-}
-
 export const ChatList = () => {
   const { data: identity } = useGetIdentity<any>();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Pobierz konwersacje
-  const {
-    tableQuery: { data: conversationsData, isLoading, refetch: refetchConversations },
-  } = useTable({
-    resource: "conversations",
-    meta: {
-      select: `
-        *,
-        conversation_participants!inner(
-          user_id,
-          unread_count,
-          last_read_at,
-          user:users(
-            id,
-            name,
-            profile_photo_url,
-            last_seen_at,
-            is_active
+  // Pobieranie konwersacji
+  const fetchConversations = async () => {
+    if (!identity?.id) return;
+    
+    setIsLoadingConversations(true);
+    
+    try {
+      // Najpierw pobierz ID konwersacji użytkownika
+      const { data: userConversations, error: convError } = await supabaseClient
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", identity.id);
+
+      if (convError) throw convError;
+
+      if (!userConversations || userConversations.length === 0) {
+        setConversations([]);
+        return;
+      }
+
+      const conversationIds = userConversations.map(c => c.conversation_id);
+
+      // Pobierz szczegóły konwersacji
+      const { data: conversationsData, error: detailsError } = await supabaseClient
+        .from("conversations")
+        .select(`
+          *,
+          conversation_participants(
+            user_id,
+            unread_count,
+            last_read_at,
+            user:users(
+              id,
+              name,
+              profile_photo_url,
+              last_seen_at,
+              is_active
+            )
           )
-        )
-      `,
-    },
-    sorters: {
-      initial: [
-        {
-          field: "last_message_at",
-          order: "desc",
-        },
-      ],
-    },
-  });
+        `)
+        .in("id", conversationIds)
+        .order("last_message_at", { ascending: false });
+
+      if (detailsError) throw detailsError;
+
+      setConversations(conversationsData || []);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      toast.error("Błąd przy pobieraniu konwersacji");
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
+  // Pobierz konwersacje przy pierwszym załadowaniu
+  useEffect(() => {
+    if (identity?.id) {
+      fetchConversations();
+    }
+  }, [identity?.id]);
 
   // Subskrybuj do nowych wiadomości
   useSubscription({
@@ -114,7 +104,7 @@ export const ChatList = () => {
     onLiveEvent: () => {
       if (selectedConversation) {
         fetchMessages(selectedConversation);
-        refetchConversations();
+        fetchConversations();
       }
     },
     enabled: !!selectedConversation,
@@ -165,21 +155,33 @@ export const ChatList = () => {
         .from("messages")
         .select("id")
         .eq("conversation_id", conversationId)
-        .neq("sender_id", identity.id)
-        .not("id", "in", `(
-          SELECT message_id FROM message_reads WHERE user_id = '${identity.id}'
-        )`);
+        .neq("sender_id", identity.id);
 
       if (unreadMessages && unreadMessages.length > 0) {
-        // Dodaj wpisy do message_reads
-        await supabaseClient
+        // Sprawdź które już są przeczytane
+        const { data: alreadyRead } = await supabaseClient
           .from("message_reads")
-          .insert(
-            unreadMessages.map(msg => ({
-              message_id: msg.id,
-              user_id: identity.id,
-            }))
-          );
+          .select("message_id")
+          .eq("user_id", identity.id)
+          .in("message_id", unreadMessages.map(m => m.id));
+
+        const alreadyReadIds = new Set(alreadyRead?.map(r => r.message_id) || []);
+        const toMarkAsRead = unreadMessages.filter(m => !alreadyReadIds.has(m.id));
+
+        if (toMarkAsRead.length > 0) {
+          // Dodaj wpisy do message_reads
+          await supabaseClient
+            .from("message_reads")
+            .insert(
+              toMarkAsRead.map(msg => ({
+                message_id: msg.id,
+                user_id: identity.id,
+              }))
+            );
+
+          // Odśwież konwersacje żeby zaktualizować unread_count
+          fetchConversations();
+        }
       }
     } catch (error) {
       console.error("Error marking messages as read:", error);
@@ -206,7 +208,7 @@ export const ChatList = () => {
 
       // Odśwież listę wiadomości i konwersacji
       fetchMessages(selectedConversation);
-      refetchConversations();
+      fetchConversations();
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Błąd przy wysyłaniu wiadomości");
@@ -253,13 +255,11 @@ export const ChatList = () => {
       return `Ostatnio aktywny(a) ${format(lastSeenDate, "dd.MM.yyyy", { locale: pl })}`;
     }
   };
-
-  const conversations = (conversationsData?.data as any[]) || [];
   
   // Filtruj konwersacje
   const filteredConversations = conversations.filter(conv => {
     const otherParticipant = conv.conversation_participants?.find(
-      (p: Participant) => p.user_id !== identity?.id
+      (p: any) => p.user_id !== identity?.id
     );
     return otherParticipant?.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -267,13 +267,13 @@ export const ChatList = () => {
   // Pobierz aktualnego rozmówcę
   const currentConversation = conversations.find(c => c.id === selectedConversation);
   const currentParticipant = currentConversation?.conversation_participants?.find(
-    (p: Participant) => p.user_id !== identity?.id
+    (p: any) => p.user_id !== identity?.id
   );
 
   return (
     <SubPage>
       <div className="flex h-full gap-4">
-        {/* Lista konwersacji - prawa strona jak w WhatsApp Web */}
+        {/* Lista konwersacji */}
         <Card className="w-96 flex flex-col h-full">
           {/* Nagłówek */}
           <div className="p-4 border-b">
@@ -298,7 +298,11 @@ export const ChatList = () => {
 
           {/* Lista konwersacji */}
           <ScrollArea className="flex-1">
-            {filteredConversations.length === 0 ? (
+            {isLoadingConversations ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <p className="text-sm">Ładowanie konwersacji...</p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-sm">Brak konwersacji</p>
@@ -307,10 +311,10 @@ export const ChatList = () => {
             ) : (
               filteredConversations.map((conversation) => {
                 const otherParticipant = conversation.conversation_participants?.find(
-                  (p: Participant) => p.user_id !== identity?.id
+                  (p: any) => p.user_id !== identity?.id
                 );
                 const myParticipant = conversation.conversation_participants?.find(
-                  (p: Participant) => p.user_id === identity?.id
+                  (p: any) => p.user_id === identity?.id
                 );
                 
                 if (!otherParticipant?.user) return null;
@@ -328,29 +332,35 @@ export const ChatList = () => {
                       isSelected && "bg-muted"
                     )}
                   >
-                    <Avatar>
-                      <AvatarImage src={otherParticipant.user.profile_photo_url} />
-                      <AvatarFallback>
-                        {otherParticipant.user.name?.charAt(0)?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar>
+                        <AvatarImage src={otherParticipant.user.profile_photo_url} />
+                        <AvatarFallback>
+                          {otherParticipant.user.name?.charAt(0)?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {hasUnread && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-background" />
+                      )}
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium truncate">
-                          {otherParticipant.user.name}
-                        </p>
-                        {conversation.last_message_at && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatMessageTime(conversation.last_message_at)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate">
+                            {otherParticipant.user.name}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {conversation.last_message_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatMessageTime(conversation.last_message_at)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.last_message_preview || "Rozpocznij konwersację"}
-                        </p>
                         {hasUnread && (
                           <Badge className="ml-2 h-5 px-1.5 min-w-[20px] justify-center">
                             {myParticipant.unread_count}
@@ -409,7 +419,7 @@ export const ChatList = () => {
                 <div className="space-y-4">
                   {messages.map((message) => {
                     const isMyMessage = message.sender_id === identity?.id;
-                    const isRead = message.reads?.some(r => r.user_id !== identity?.id);
+                    const isRead = message.reads?.some((r: any) => r.user_id !== identity?.id);
 
                     return (
                       <div

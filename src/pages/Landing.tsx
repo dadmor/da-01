@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Bar, BarChart as RechartsBarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import RodoDisclaimer from "./RodoDisclamer";
 
 const LandingPage = () => {
   const [scrollY, setScrollY] = useState(0);
@@ -98,12 +99,13 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <RodoDisclaimer/>
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg border-b">
+      <nav className="fixed  top-0 w-full z-30 bg-background/80 backdrop-blur-lg border-b">
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
           <div className="text-2xl font-black tracking-tighter flex items-center gap-2">
             <Music className="w-6 h-6 text-primary" />
-            PRIVATE DANCER<span className="text-primary">.</span>
+            DANCE HUB<span className="text-primary">.</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <Button variant="ghost" className="text-sm font-medium">
@@ -198,7 +200,7 @@ const LandingPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Music className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-semibold">Private Dancer</span>
+                        <span className="text-sm font-semibold">Dance Hub</span>
                       </div>
                       <span className="text-xs text-muted-foreground">
                         twoj.profil
@@ -505,10 +507,10 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-2xl font-black tracking-tighter flex items-center gap-2">
               <Music className="w-6 h-6 text-primary" />
-              PRIVATE DANCER<span className="text-primary">.</span>
+              DANCE HUBR<span className="text-primary">.</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              © 2025 Private Dancer. Stworzone z pasją dla tańca.
+              © 2025 Dance Hub. Stworzone z pasją dla tańca.
             </div>
           </div>
         </div>

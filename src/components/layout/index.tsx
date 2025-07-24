@@ -48,7 +48,7 @@ export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
               <MenuIcon className="h-6 w-6" />
             </Button>
             <span className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Private Dancer
+              Dance Hub
             </span>
           </div>
 
