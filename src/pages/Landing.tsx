@@ -14,10 +14,18 @@ import {
   Music,
   MapPin,
   Star,
-  Award
+  Award,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { Bar, BarChart as RechartsBarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import {
+  Bar,
+  BarChart as RechartsBarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import RodoDisclaimer from "./RodoDisclamer";
 
 const LandingPage = () => {
@@ -43,7 +51,11 @@ const LandingPage = () => {
       icon: Trophy,
       title: "SYSTEM GAMIFIKACJI",
       desc: "Zdobywaj punkty, odznaki i awansuj w rankingu tancerzy",
-      features: ["Poziomy doświadczenia", "Wyzwania tygodniowe", "Nagrody społeczności"],
+      features: [
+        "Poziomy doświadczenia",
+        "Wyzwania tygodniowe",
+        "Nagrody społeczności",
+      ],
       color: "from-amber-500/20 to-amber-600/10",
     },
     {
@@ -56,13 +68,13 @@ const LandingPage = () => {
   ];
 
   const chartData = [
-    { day: 'Pon', aktywni: 1240, wydarzenia: 45 },
-    { day: 'Wto', aktywni: 1650, wydarzenia: 62 },
-    { day: 'Śro', aktywni: 1480, wydarzenia: 51 },
-    { day: 'Czw', aktywni: 1890, wydarzenia: 78 },
-    { day: 'Pią', aktywni: 2450, wydarzenia: 125 },
-    { day: 'Sob', aktywni: 3200, wydarzenia: 186 },
-    { day: 'Nie', aktywni: 2800, wydarzenia: 142 }
+    { day: "Pon", aktywni: 1240, wydarzenia: 45 },
+    { day: "Wto", aktywni: 1650, wydarzenia: 62 },
+    { day: "Śro", aktywni: 1480, wydarzenia: 51 },
+    { day: "Czw", aktywni: 1890, wydarzenia: 78 },
+    { day: "Pią", aktywni: 2450, wydarzenia: 125 },
+    { day: "Sob", aktywni: 3200, wydarzenia: 186 },
+    { day: "Nie", aktywni: 2800, wydarzenia: 142 },
   ];
 
   interface ChartDataPoint {
@@ -85,9 +97,7 @@ const LandingPage = () => {
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="font-medium">{label}</p>
-          <p className="text-sm text-primary">
-            Aktywni: {payload[0].value}
-          </p>
+          <p className="text-sm text-primary">Aktywni: {payload[0].value}</p>
           <p className="text-sm text-muted-foreground">
             Wydarzenia: {payload[0].payload.wydarzenia}
           </p>
@@ -99,7 +109,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <RodoDisclaimer/>
+      <RodoDisclaimer />
       {/* Navigation */}
       <nav className="fixed  top-0 w-full z-30 bg-background/80 backdrop-blur-lg border-b">
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
@@ -130,14 +140,76 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center pt-20">
-        <div
-          className="absolute inset-0 opacity-5 pointer-events-none"
-          style={{
-            backgroundImage: `linear-gradient(to right, currentColor .25px, transparent 1px),
-                              linear-gradient(to bottom, currentColor .25px, transparent 1px)`,
-            backgroundSize: "4rem 4rem",
-          }}
-        />
+        <div className="absolute inset-0 pointer-events-none">
+        <svg
+  className="w-full h-full"
+  viewBox="0 0 1600 1200"
+  preserveAspectRatio="xMidYMid slice"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <radialGradient id="khakiBase" cx="50%" cy="50%" r="150%">
+      <stop offset="0%" stop-color="#d4c4a8" />
+      <stop offset="30%" stop-color="#bda98a" />
+      <stop offset="60%" stop-color="#a39274" />
+      <stop offset="100%" stop-color="#8a7a64" />
+    </radialGradient>
+
+    <radialGradient id="khakiHighlight" cx="30%" cy="20%" r="100%">
+      <stop offset="0%" stop-color="#d4c4a8" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#c9b89b" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#bda98a" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="khakiGlow" cx="70%" cy="80%" r="100%">
+      <stop offset="0%" stop-color="#cdbca0" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#b09d7f" stop-opacity="0" />
+    </radialGradient>
+
+    <filter id="premiumMatte">
+      <feTurbulence 
+        type="fractalNoise" 
+        baseFrequency="4" 
+        numOctaves="1" 
+        seed="10"
+      />
+      <feColorMatrix type="saturate" values="0.2"/>
+      <feComponentTransfer>
+        <feFuncA type="discrete" tableValues="0 0 0 .05 0 .05 .1 .05 0 .05 .1 .05 0 .05 .1 .15" />
+      </feComponentTransfer>
+      <feBlend mode="multiply"/>
+    </filter>
+
+    <filter id="silkTexture">
+      <feTurbulence 
+        type="turbulence" 
+        baseFrequency="8" 
+        numOctaves="1" 
+        result="turbulence"
+      />
+      <feColorMatrix in="turbulence" type="saturate" values="0.1"/>
+      <feComponentTransfer>
+        <feFuncA type="discrete" tableValues="0 0 0 0 .02 .04 .06 .04 .02 .04 .06 .04 .02 .04 .06 .08" />
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#bda98a" />
+
+  <rect width="100%" height="100%" fill="url(#khakiBase)" />
+
+  <rect width="100%" height="100%" fill="url(#khakiHighlight)" />
+  
+  <rect width="100%" height="100%" fill="url(#khakiGlow)" />
+
+  <rect width="100%" height="100%" fill="#b09d7f" opacity="0.4" filter="url(#premiumMatte)" />
+  
+  <rect width="100%" height="100%" fill="#c3b091" opacity="0.3" filter="url(#silkTexture)" />
+
+  <rect width="100%" height="100%" fill="#d4c4a8" opacity="0.08" />
+</svg>
+        </div>
+
         <div className="container mx-auto px-6 z-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -155,8 +227,9 @@ const LandingPage = () => {
               </h1>
 
               <p className="text-xl text-muted-foreground mb-10 max-w-xl">
-                Odkryj wydarzenia, ucz się od najlepszych, znajdź idealnego partnera tanecznego. 
-                Dołącz do platformy, która łączy tancerzy z całej Polski.
+                Odkryj wydarzenia, ucz się od najlepszych, znajdź idealnego
+                partnera tanecznego. Dołącz do platformy, która łączy tancerzy z
+                całej Polski.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-10">
@@ -248,23 +321,26 @@ const LandingPage = () => {
                       </h4>
                       <ResponsiveContainer width="100%" height={200}>
                         <RechartsBarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis 
-                            dataKey="day" 
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="opacity-30"
+                          />
+                          <XAxis
+                            dataKey="day"
                             tick={{ fontSize: 12 }}
                             tickLine={false}
                           />
-                          <YAxis 
+                          <YAxis
                             tick={{ fontSize: 12 }}
                             tickLine={false}
                             axisLine={false}
                           />
-                          <Tooltip 
-                            content={<CustomTooltip />} 
-                            cursor={{ fill: 'transparent' }}
+                          <Tooltip
+                            content={<CustomTooltip />}
+                            cursor={{ fill: "transparent" }}
                           />
-                          <Bar 
-                            dataKey="aktywni" 
+                          <Bar
+                            dataKey="aktywni"
                             fill="hsl(var(--primary))"
                             radius={[8, 8, 0, 0]}
                           />
@@ -363,12 +439,13 @@ const LandingPage = () => {
               <CardContent className="p-12 text-center">
                 <Heart className="w-16 h-16 text-primary mx-auto mb-6" />
                 <h3 className="text-3xl font-bold mb-4">
-                  ZNAJDŹ IDEALNEGO <span className="text-primary">PARTNERA</span>
+                  ZNAJDŹ IDEALNEGO{" "}
+                  <span className="text-primary">PARTNERA</span>
                 </h3>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Nasz inteligentny system dopasowań pomoże Ci znaleźć osobę o podobnym 
-                  poziomie umiejętności, preferencjach muzycznych i dostępności czasowej.
-                  Taniec we dwoje nigdy nie był prostszy!
+                  Nasz inteligentny system dopasowań pomoże Ci znaleźć osobę o
+                  podobnym poziomie umiejętności, preferencjach muzycznych i
+                  dostępności czasowej. Taniec we dwoje nigdy nie był prostszy!
                 </p>
               </CardContent>
             </div>
@@ -472,8 +549,8 @@ const LandingPage = () => {
                 ZATAŃCZ Z <span className="text-primary">NAMI</span>
               </h2>
               <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-                Dołącz do największej społeczności tanecznej w Polsce.
-                Pierwsze 30 dni premium gratis!
+                Dołącz do największej społeczności tanecznej w Polsce. Pierwsze
+                30 dni premium gratis!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                 <Button

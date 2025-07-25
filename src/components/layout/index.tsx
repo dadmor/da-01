@@ -12,8 +12,8 @@ export const Layout: React.FC<PropsWithChildren> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
-      <div className="flex relative">
+    <div className="min-h-screen bg-stone-200 relative overflow-x-hidden">
+      <div className="flex relative ">
         {/* Mobile Overlay z delikatnym purpurowym zaciemnieniem */}
         {isMobileMenuOpen && (
           <div
