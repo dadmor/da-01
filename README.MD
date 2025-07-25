@@ -45,3 +45,5 @@ Ten kod został wygenerowany przez AI/LLM i powinien zostać sprawdzony oraz prz
 Copyright (C) 2025
 
 Ten program jest wolnym oprogramowaniem na warunkach licencji GPL-3.0.
+
+
