@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useTable, useGetIdentity, useSubscription, useCustom } from "@refinedev/core";
+import { useGetIdentity } from "@refinedev/core";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Search,
@@ -25,6 +24,13 @@ import { cn } from "@/utility";
 import { format, isToday, isYesterday } from "date-fns";
 import { pl } from "date-fns/locale";
 
+interface Conversation {
+  conversation_participants: {
+    user_id: string;
+    unread_count: number;
+  }[];
+}
+
 // Komponent React
 import React from 'react';
 
@@ -35,6 +41,12 @@ const ConversationItem = React.memo(({
   onClick, 
   identity,
   formatMessageTime 
+}: {
+  conversation: Conversation;
+  isSelected: boolean;
+  onClick: () => void;
+  identity: any;
+  formatMessageTime: (date: string) => string;
 }) => {
   const otherParticipant = conversation.conversation_participants?.find(
     (p) => p.user_id !== identity?.id
@@ -43,7 +55,7 @@ const ConversationItem = React.memo(({
     (p) => p.user_id === identity?.id
   );
   
-  if (!otherParticipant?.user) return null;
+  if (!otherParticipant?.user_id) return null;
 
   const hasUnread = (myParticipant?.unread_count || 0) > 0;
 
@@ -504,11 +516,11 @@ export const ChatList = () => {
 
   return (
     <SubPage>
-      <div className="flex h-full gap-4">
+      <div className="flex h-[calc(100vh-10rem)] gap-4 overflow-hidden">
         {/* Lista konwersacji */}
-        <Card className="w-96 flex flex-col h-full">
+        <Card className="w-96 flex flex-col">
           {/* Nagłówek */}
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Czaty</h2>
               <Button variant="ghost" size="icon">
@@ -557,9 +569,9 @@ export const ChatList = () => {
 
         {/* Okno czatu */}
         {selectedConversation && currentParticipant ? (
-          <Card className="flex-1 flex flex-col h-full">
+          <Card className="flex-1 flex flex-col min-h-0">
             {/* Nagłówek czatu */}
-            <div className="p-4 border-b flex items-center gap-3">
+            <div className="p-4 border-b flex items-center gap-3 flex-shrink-0">
               <Avatar>
                 <AvatarImage src={currentParticipant.user.profile_photo_url} />
                 <AvatarFallback>
@@ -611,7 +623,7 @@ export const ChatList = () => {
             </ScrollArea>
 
             {/* Pole wprowadzania */}
-            <div className="p-4 border-t">
+            <div className="p-4 border-t flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon">
                   <Paperclip className="h-4 w-4" />
