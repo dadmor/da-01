@@ -14,7 +14,6 @@ import {
   Smile,
   Check,
   CheckCheck,
-  Clock,
   MessageSquare,
 } from "lucide-react";
 import { SubPage } from "@/components/layout";
@@ -24,143 +23,192 @@ import { cn } from "@/utility";
 import { format, isToday, isYesterday } from "date-fns";
 import { pl } from "date-fns/locale";
 
+// Interfejsy typów
+interface User {
+  id: string;
+  name: string;
+  profile_photo_url?: string;
+  last_seen_at?: string;
+  is_active?: boolean;
+}
+
+interface ConversationParticipant {
+  user_id: string;
+  unread_count: number;
+  last_read_at?: string | null;
+  user: User;
+}
+
 interface Conversation {
-  conversation_participants: {
+  id: string;
+  last_message_at?: string;
+  last_message_preview?: string;
+  conversation_participants: ConversationParticipant[];
+}
+
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender?: User;
+  message_reads?: {
     user_id: string;
-    unread_count: number;
+    read_at: string;
   }[];
 }
 
+interface Identity {
+  id: string;
+  name: string;
+  profile_photo_url?: string;
+}
+
 // Komponent React
-import React from 'react';
+import React from "react";
 
 // Komponenty memoizowane
-const ConversationItem = React.memo(({ 
-  conversation, 
-  isSelected, 
-  onClick, 
-  identity,
-  formatMessageTime 
-}: {
-  conversation: Conversation;
-  isSelected: boolean;
-  onClick: () => void;
-  identity: any;
-  formatMessageTime: (date: string) => string;
-}) => {
-  const otherParticipant = conversation.conversation_participants?.find(
-    (p) => p.user_id !== identity?.id
-  );
-  const myParticipant = conversation.conversation_participants?.find(
-    (p) => p.user_id === identity?.id
-  );
-  
-  if (!otherParticipant?.user_id) return null;
+const ConversationItem = React.memo(
+  ({
+    conversation,
+    isSelected,
+    onClick,
+    identity,
+    formatMessageTime,
+  }: {
+    conversation: Conversation;
+    isSelected: boolean;
+    onClick: () => void;
+    identity: Identity;
+    formatMessageTime: (date: string) => string;
+  }) => {
+    const otherParticipant = conversation.conversation_participants?.find(
+      (p) => p.user_id !== identity?.id
+    );
+    const myParticipant = conversation.conversation_participants?.find(
+      (p) => p.user_id === identity?.id
+    );
 
-  const hasUnread = (myParticipant?.unread_count || 0) > 0;
+    if (!otherParticipant?.user_id) return null;
 
-  return (
-    <div
-      onClick={() => onClick(conversation.id)}
-      className={cn(
-        "flex items-center gap-3 p-4 cursor-pointer transition-colors",
-        "hover:bg-muted/50",
-        isSelected && "bg-muted"
-      )}
-    >
-      <div className="relative">
-        <Avatar>
-          <AvatarImage src={otherParticipant.user.profile_photo_url} />
-          <AvatarFallback>
-            {otherParticipant.user.name?.charAt(0)?.toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        {hasUnread && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-background" />
-        )}
-      </div>
+    const hasUnread = (myParticipant?.unread_count || 0) > 0;
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <p className="font-medium truncate">
-            {otherParticipant.user.name}
-          </p>
-          {conversation.last_message_at && (
-            <span className="text-xs text-muted-foreground">
-              {formatMessageTime(conversation.last_message_at)}
-            </span>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground truncate">
-            {conversation.last_message_preview || "Brak wiadomości"}
-          </p>
-          {hasUnread && (
-            <Badge className="ml-2 h-5 px-1.5 min-w-[20px] justify-center">
-              {myParticipant.unread_count}
-            </Badge>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const Message = React.memo(({ message, isMyMessage, identity }) => {
-  const isRead = message.message_reads?.some((r) => r.user_id !== identity?.id);
-
-  return (
-    <div
-      className={cn(
-        "flex",
-        isMyMessage ? "justify-end" : "justify-start"
-      )}
-    >
+    return (
       <div
+        onClick={onClick}
         className={cn(
-          "max-w-[70%] rounded-lg px-4 py-2",
-          isMyMessage
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted"
+          "flex items-center gap-3 p-4 cursor-pointer transition-colors",
+          "hover:bg-muted/50",
+          isSelected && "bg-muted"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap break-words">
-          {message.content}
-        </p>
-        
-        <div className={cn(
-          "flex items-center gap-1 mt-1",
-          isMyMessage ? "justify-end" : "justify-start"
-        )}>
-          <span className={cn(
-            "text-xs",
-            isMyMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-          )}>
-            {format(new Date(message.created_at), "HH:mm")}
-          </span>
-          
-          {isMyMessage && (
-            isRead ? (
-              <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-            ) : (
-              <Check className="h-3 w-3 text-primary-foreground/70" />
-            )
+        <div className="relative">
+          <Avatar>
+            <AvatarImage src={otherParticipant.user.profile_photo_url} />
+            <AvatarFallback>
+              {otherParticipant.user.name?.charAt(0)?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {hasUnread && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-background" />
           )}
         </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-medium truncate">{otherParticipant.user.name}</p>
+            {conversation.last_message_at && (
+              <span className="text-xs text-muted-foreground">
+                {formatMessageTime(conversation.last_message_at)}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground truncate">
+              {conversation.last_message_preview || "Brak wiadomości"}
+            </p>
+            {hasUnread && myParticipant && (
+              <Badge className="ml-2 h-5 px-1.5 min-w-[20px] justify-center">
+                {myParticipant.unread_count}
+              </Badge>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
+
+const MessageComponent = React.memo(
+  ({
+    message,
+    isMyMessage,
+    identity,
+  }: {
+    message: Message;
+    isMyMessage: boolean;
+    identity: Identity;
+  }) => {
+    const isRead = message.message_reads?.some(
+      (r) => r.user_id !== identity?.id
+    );
+
+    return (
+      <div
+        className={cn("flex", isMyMessage ? "justify-end" : "justify-start")}
+      >
+        <div
+          className={cn(
+            "max-w-[70%] rounded-lg px-4 py-2",
+            isMyMessage ? "bg-primary text-primary-foreground" : "bg-muted"
+          )}
+        >
+          <p className="text-sm whitespace-pre-wrap break-words">
+            {message.content}
+          </p>
+
+          <div
+            className={cn(
+              "flex items-center gap-1 mt-1",
+              isMyMessage ? "justify-end" : "justify-start"
+            )}
+          >
+            <span
+              className={cn(
+                "text-xs",
+                isMyMessage
+                  ? "text-primary-foreground/70"
+                  : "text-muted-foreground"
+              )}
+            >
+              {format(new Date(message.created_at), "HH:mm")}
+            </span>
+
+            {isMyMessage &&
+              (isRead ? (
+                <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
+              ) : (
+                <Check className="h-3 w-3 text-primary-foreground/70" />
+              ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
 
 export const ChatList = () => {
-  const { data: identity } = useGetIdentity<any>();
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const { data: identity } = useGetIdentity<Identity>();
+  const [selectedConversation, setSelectedConversation] = useState<
+    string | null
+  >(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -168,7 +216,7 @@ export const ChatList = () => {
   // Memoizowane funkcje pomocnicze
   const formatMessageTime = useCallback((date: string) => {
     const messageDate = new Date(date);
-    
+
     if (isToday(messageDate)) {
       return format(messageDate, "HH:mm");
     } else if (isYesterday(messageDate)) {
@@ -180,47 +228,51 @@ export const ChatList = () => {
 
   const formatLastSeen = useCallback((date?: string) => {
     if (!date) return "Dawno temu";
-    
+
     const lastSeenDate = new Date(date);
-    
+
     if (isToday(lastSeenDate)) {
       return `Ostatnio aktywny(a) dzisiaj o ${format(lastSeenDate, "HH:mm")}`;
     } else if (isYesterday(lastSeenDate)) {
       return `Ostatnio aktywny(a) wczoraj o ${format(lastSeenDate, "HH:mm")}`;
     } else {
-      return `Ostatnio aktywny(a) ${format(lastSeenDate, "dd.MM.yyyy", { locale: pl })}`;
+      return `Ostatnio aktywny(a) ${format(lastSeenDate, "dd.MM.yyyy", {
+        locale: pl,
+      })}`;
     }
   }, []);
 
   // Pobieranie konwersacji
   const fetchConversations = useCallback(async () => {
     if (!identity?.id) return;
-    
+
     setIsLoadingConversations(true);
-    
+
     try {
-      const { data, error } = await supabaseClient
-        .rpc('get_my_conversations');
+      const { data, error } = await supabaseClient.rpc("get_my_conversations");
 
       if (error) throw error;
 
-      const formattedConversations = data?.map(conv => ({
-        id: conv.conversation_id,
-        last_message_at: conv.last_message_time,
-        last_message_preview: conv.last_message,
-        conversation_participants: [{
-          user_id: conv.other_user_id || identity.id,
-          unread_count: conv.my_unread_count || 0,
-          last_read_at: null,
-          user: {
-            id: conv.other_user_id,
-            name: conv.other_user_name,
-            profile_photo_url: conv.other_user_photo,
-            last_seen_at: null,
-            is_active: false
-          }
-        }]
-      })) || [];
+      const formattedConversations: Conversation[] =
+        data?.map((conv: any) => ({
+          id: conv.conversation_id,
+          last_message_at: conv.last_message_time,
+          last_message_preview: conv.last_message,
+          conversation_participants: [
+            {
+              user_id: conv.other_user_id || identity.id,
+              unread_count: conv.my_unread_count || 0,
+              last_read_at: null,
+              user: {
+                id: conv.other_user_id,
+                name: conv.other_user_name,
+                profile_photo_url: conv.other_user_photo,
+                last_seen_at: null,
+                is_active: false,
+              },
+            },
+          ],
+        })) || [];
 
       setConversations(formattedConversations);
     } catch (error) {
@@ -232,15 +284,22 @@ export const ChatList = () => {
   }, [identity?.id]);
 
   // Aktualizuj pojedynczą konwersację bez pełnego przeładowania
-  const updateSingleConversation = useCallback((conversationId: string, updates: any) => {
-    setConversations(prev => prev.map(conv => 
-      conv.id === conversationId 
-        ? { ...conv, ...updates }
-        : conv
-    ).sort((a, b) => 
-      new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-    ));
-  }, []);
+  const updateSingleConversation = useCallback(
+    (conversationId: string, updates: Partial<Conversation>) => {
+      setConversations((prev) =>
+        prev
+          .map((conv) =>
+            conv.id === conversationId ? { ...conv, ...updates } : conv
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at || 0).getTime() -
+              new Date(a.last_message_at || 0).getTime()
+          )
+      );
+    },
+    []
+  );
 
   // Pobierz konwersacje przy pierwszym załadowaniu
   useEffect(() => {
@@ -257,37 +316,37 @@ export const ChatList = () => {
     const messagesSubscription = supabaseClient
       .channel(`messages-${selectedConversation}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${selectedConversation}`
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${selectedConversation}`,
         },
-        async (payload) => {
-          console.log('Nowa wiadomość:', payload);
-          
+        async (payload: any) => {
+          console.log("Nowa wiadomość:", payload);
+
           // Jeśli to nie nasza wiadomość, dodaj ją
           if (payload.new.sender_id !== identity.id) {
             // Pobierz dane nadawcy
             const { data: senderData } = await supabaseClient
-              .from('users')
-              .select('name, profile_photo_url')
-              .eq('id', payload.new.sender_id)
+              .from("users")
+              .select("name, profile_photo_url")
+              .eq("id", payload.new.sender_id)
               .single();
 
-            const newMessage = {
+            const newMessage: Message = {
               ...payload.new,
               sender: senderData,
-              message_reads: []
+              message_reads: [],
             };
 
-            setMessages(prev => [...prev, newMessage]);
-            
+            setMessages((prev) => [...prev, newMessage]);
+
             // Aktualizuj preview konwersacji
             updateSingleConversation(selectedConversation, {
               last_message_preview: payload.new.content,
-              last_message_at: payload.new.created_at
+              last_message_at: payload.new.created_at,
             });
 
             // Odtwórz dźwięk powiadomienia (opcjonalnie)
@@ -308,46 +367,52 @@ export const ChatList = () => {
 
     // Subskrypcja do zmian w conversation_participants (unread_count)
     const participantsSubscription = supabaseClient
-      .channel('conversation-participants')
+      .channel("conversation-participants")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversation_participants',
-          filter: `user_id=eq.${identity.id}`
+          event: "UPDATE",
+          schema: "public",
+          table: "conversation_participants",
+          filter: `user_id=eq.${identity.id}`,
         },
-        (payload) => {
-          console.log('Zmiana w uczestnikach:', payload);
-          
+        (payload: any) => {
+          console.log("Zmiana w uczestnikach:", payload);
+
           // Aktualizuj unread_count dla konwersacji
-          setConversations(prev => prev.map(conv => {
-            if (conv.id === payload.new.conversation_id) {
-              const updatedParticipants = conv.conversation_participants.map(p => 
-                p.user_id === identity.id 
-                  ? { ...p, unread_count: payload.new.unread_count }
-                  : p
-              );
-              return { ...conv, conversation_participants: updatedParticipants };
-            }
-            return conv;
-          }));
+          setConversations((prev) =>
+            prev.map((conv) => {
+              if (conv.id === payload.new.conversation_id) {
+                const updatedParticipants = conv.conversation_participants.map(
+                  (p) =>
+                    p.user_id === identity.id
+                      ? { ...p, unread_count: payload.new.unread_count }
+                      : p
+                );
+                return {
+                  ...conv,
+                  conversation_participants: updatedParticipants,
+                };
+              }
+              return conv;
+            })
+          );
         }
       )
       .subscribe();
 
     // Subskrypcja do nowych konwersacji
     const conversationsSubscription = supabaseClient
-      .channel('conversations-list')
+      .channel("conversations-list")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'conversations'
+          event: "INSERT",
+          schema: "public",
+          table: "conversations",
         },
         () => {
-          console.log('Nowa konwersacja');
+          console.log("Nowa konwersacja");
           // Odśwież listę konwersacji
           fetchConversations();
         }
@@ -361,12 +426,14 @@ export const ChatList = () => {
   }, [identity?.id, fetchConversations]);
 
   // Pobierz wiadomości dla wybranej konwersacji
-  const fetchMessages = useCallback(async (conversationId: string) => {
-    setIsLoadingMessages(true);
-    try {
-      const { data, error } = await supabaseClient
-        .from("messages")
-        .select(`
+  const fetchMessages = useCallback(
+    async (conversationId: string) => {
+      setIsLoadingMessages(true);
+      try {
+        const { data, error } = await supabaseClient
+          .from("messages")
+          .select(
+            `
           *,
           sender:users!sender_id(
             name,
@@ -376,49 +443,61 @@ export const ChatList = () => {
             user_id,
             read_at
           )
-        `)
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        `
+          )
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
 
-      if (error) throw error;
-      setMessages(data || []);
+        if (error) throw error;
+        setMessages(data || []);
 
-      // Oznacz wiadomości jako przeczytane
-      if (data && data.length > 0 && identity?.id) {
-        markMessagesAsRead(conversationId);
+        // Oznacz wiadomości jako przeczytane
+        if (data && data.length > 0 && identity?.id) {
+          markMessagesAsRead(conversationId);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        toast.error("Błąd przy pobieraniu wiadomości");
+      } finally {
+        setIsLoadingMessages(false);
       }
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      toast.error("Błąd przy pobieraniu wiadomości");
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [identity?.id]);
+    },
+    [identity?.id]
+  );
 
   // Oznacz wiadomości jako przeczytane
-  const markMessagesAsRead = useCallback(async (conversationId: string) => {
-    if (!identity?.id) return;
+  const markMessagesAsRead = useCallback(
+    async (conversationId: string) => {
+      if (!identity?.id) return;
 
-    try {
-      // Najpierw zaktualizuj lokalnie
-      setConversations(prev => prev.map(conv => {
-        if (conv.id === conversationId) {
-          const updatedParticipants = conv.conversation_participants.map(p => 
-            p.user_id === identity.id ? { ...p, unread_count: 0 } : p
-          );
-          return { ...conv, conversation_participants: updatedParticipants };
-        }
-        return conv;
-      }));
+      try {
+        // Najpierw zaktualizuj lokalnie
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (conv.id === conversationId) {
+              const updatedParticipants = conv.conversation_participants.map(
+                (p) =>
+                  p.user_id === identity.id ? { ...p, unread_count: 0 } : p
+              );
+              return {
+                ...conv,
+                conversation_participants: updatedParticipants,
+              };
+            }
+            return conv;
+          })
+        );
 
-      // Potem wyślij do bazy
-      await supabaseClient.rpc('mark_conversation_read', {
-        p_conversation_id: conversationId
-      });
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  }, [identity?.id]);
+        // Potem wyślij do bazy
+        await supabaseClient.rpc("mark_conversation_read", {
+          p_conversation_id: conversationId,
+        });
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
+    },
+    [identity?.id]
+  );
 
   // Wyślij wiadomość
   const sendMessage = useCallback(async () => {
@@ -426,27 +505,28 @@ export const ChatList = () => {
 
     const messageContent = newMessage.trim();
     const tempId = `temp-${Date.now()}`;
-    const optimisticMessage = {
+    const optimisticMessage: Message = {
       id: tempId,
       conversation_id: selectedConversation,
       sender_id: identity.id,
       content: messageContent,
       created_at: new Date().toISOString(),
       sender: {
+        id: identity.id,
         name: identity.name,
-        profile_photo_url: identity.profile_photo_url
+        profile_photo_url: identity.profile_photo_url,
       },
-      message_reads: []
+      message_reads: [],
     };
 
     // Optymistyczna aktualizacja - dodaj wiadomość natychmiast
-    setMessages(prev => [...prev, optimisticMessage]);
+    setMessages((prev) => [...prev, optimisticMessage]);
     setNewMessage("");
 
     // Aktualizuj preview w liście konwersacji
     updateSingleConversation(selectedConversation, {
       last_message_preview: messageContent,
-      last_message_at: new Date().toISOString()
+      last_message_at: new Date().toISOString(),
     });
 
     try {
@@ -463,25 +543,35 @@ export const ChatList = () => {
       if (error) throw error;
 
       // Zastąp tymczasową wiadomość prawdziwą
-      setMessages(prev => prev.map(msg => 
-        msg.id === tempId ? { ...data, sender: optimisticMessage.sender } : msg
-      ));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId
+            ? { ...data, sender: optimisticMessage.sender }
+            : msg
+        )
+      );
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Błąd przy wysyłaniu wiadomości");
-      
+
       // Usuń optymistyczną wiadomość i przywróć tekst
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       setNewMessage(messageContent);
-      
+
       // Przywróć poprzedni stan konwersacji
       fetchConversations();
     }
-  }, [newMessage, selectedConversation, identity, updateSingleConversation, fetchConversations]);
+  }, [
+    newMessage,
+    selectedConversation,
+    identity,
+    updateSingleConversation,
+    fetchConversations,
+  ]);
 
   // Przewiń do końca wiadomości
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView();
   }, [messages]);
 
   // Wybierz konwersację
@@ -490,27 +580,30 @@ export const ChatList = () => {
       fetchMessages(selectedConversation);
     }
   }, [selectedConversation, fetchMessages]);
-  
+
   // Filtruj konwersacje - memoizowane
   const filteredConversations = useMemo(() => {
-    return conversations.filter(conv => {
+    return conversations.filter((conv) => {
       const otherParticipant = conv.conversation_participants?.find(
-        (p: any) => p.user_id !== identity?.id
+        (p) => p.user_id !== identity?.id
       );
-      return otherParticipant?.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      return otherParticipant?.user?.name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
     });
   }, [conversations, searchQuery, identity?.id]);
 
   // Pobierz aktualnego rozmówcę - memoizowane
-  const currentConversation = useMemo(() => 
-    conversations.find(c => c.id === selectedConversation),
+  const currentConversation = useMemo(
+    () => conversations.find((c) => c.id === selectedConversation),
     [conversations, selectedConversation]
   );
-  
-  const currentParticipant = useMemo(() => 
-    currentConversation?.conversation_participants?.find(
-      (p: any) => p.user_id !== identity?.id
-    ),
+
+  const currentParticipant = useMemo(
+    () =>
+      currentConversation?.conversation_participants?.find(
+        (p) => p.user_id !== identity?.id
+      ),
     [currentConversation, identity?.id]
   );
 
@@ -527,7 +620,7 @@ export const ChatList = () => {
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* Wyszukiwarka */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -550,7 +643,9 @@ export const ChatList = () => {
               <div className="p-8 text-center text-muted-foreground">
                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-sm">Brak konwersacji</p>
-                <p className="text-xs mt-2">Dopasuj się z kimś, aby rozpocząć czat</p>
+                <p className="text-xs mt-2">
+                  Dopasuj się z kimś, aby rozpocząć czat
+                </p>
               </div>
             ) : (
               filteredConversations.map((conversation) => (
@@ -558,8 +653,8 @@ export const ChatList = () => {
                   key={conversation.id}
                   conversation={conversation}
                   isSelected={selectedConversation === conversation.id}
-                  onClick={setSelectedConversation}
-                  identity={identity}
+                  onClick={() => setSelectedConversation(conversation.id)}
+                  identity={identity!}
                   formatMessageTime={formatMessageTime}
                 />
               ))
@@ -578,14 +673,13 @@ export const ChatList = () => {
                   {currentParticipant.user.name?.charAt(0)?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              
+
               <div className="flex-1">
                 <p className="font-medium">{currentParticipant.user.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {currentParticipant.user.is_active 
-                    ? "Aktywny(a) teraz" 
-                    : formatLastSeen(currentParticipant.user.last_seen_at)
-                  }
+                  {currentParticipant.user.is_active
+                    ? "Aktywny(a) teraz"
+                    : formatLastSeen(currentParticipant.user.last_seen_at)}
                 </p>
               </div>
 
@@ -598,7 +692,9 @@ export const ChatList = () => {
             <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
               {isLoadingMessages ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">Ładowanie wiadomości...</p>
+                  <p className="text-muted-foreground">
+                    Ładowanie wiadomości...
+                  </p>
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center py-8">
@@ -610,11 +706,11 @@ export const ChatList = () => {
               ) : (
                 <div className="space-y-4">
                   {messages.map((message) => (
-                    <Message
+                    <MessageComponent
                       key={message.id}
                       message={message}
                       isMyMessage={message.sender_id === identity?.id}
-                      identity={identity}
+                      identity={identity!}
                     />
                   ))}
                   <div ref={messagesEndRef} />
@@ -628,24 +724,24 @@ export const ChatList = () => {
                 <Button variant="ghost" size="icon">
                   <Paperclip className="h-4 w-4" />
                 </Button>
-                
+
                 <Input
                   placeholder="Napisz wiadomość..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       sendMessage();
                     }
                   }}
                   className="flex-1"
                 />
-                
+
                 <Button variant="ghost" size="icon">
                   <Smile className="h-4 w-4" />
                 </Button>
-                
+
                 <Button
                   onClick={sendMessage}
                   size="icon"
